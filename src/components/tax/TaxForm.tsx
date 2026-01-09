@@ -1,9 +1,8 @@
 'use client';
 
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useRef, useState, useActionState } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
-import { useFormState } from 'react-dom';
 import Image from 'next/image';
 
 import { taxRecordSchema, type TaxRecordFormValues } from '@/types';
@@ -21,36 +20,17 @@ const initialState = {
   status: '',
 };
 
-function SubmitButton() {
-  const [pending, setPending] = useState(false);
-  // A hacky way to get pending state from useFormStatus until it's stable
-  useEffect(() => {
-    const form = document.querySelector('form');
-    const observer = new MutationObserver((mutations) => {
-      mutations.forEach((mutation) => {
-        if (mutation.attributeName === 'data-pending') {
-          const isPending = (mutation.target as HTMLElement).dataset.pending === 'true';
-          setPending(isPending);
-        }
-      });
-    });
-    if (form) {
-      observer.observe(form, { attributes: true });
-    }
-    return () => observer.disconnect();
-  }, []);
-
-
+function SubmitButton({ isPending }: { isPending: boolean }) {
   return (
-    <Button type="submit" disabled={pending} className="w-full bg-accent text-accent-foreground hover:bg-accent/90">
-      {pending ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
-      {pending ? 'Guardando...' : 'Guardar Pago'}
+    <Button type="submit" disabled={isPending} className="w-full bg-accent text-accent-foreground hover:bg-accent/90">
+      {isPending ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
+      {isPending ? 'Guardando...' : 'Guardar Pago'}
     </Button>
   );
 }
 
 export default function TaxForm() {
-  const [state, formAction] = useFormState(addTaxRecord, initialState);
+  const [state, formAction, isPending] = useActionState(addTaxRecord, initialState);
   const { toast } = useToast();
   const formRef = useRef<HTMLFormElement>(null);
   const [preview, setPreview] = useState<string | null>(null);
@@ -203,7 +183,7 @@ export default function TaxForm() {
             </div>
           </div>
         </div>
-        <SubmitButton />
+        <SubmitButton isPending={isPending} />
       </form>
     </Form>
   );
