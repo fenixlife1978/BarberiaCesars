@@ -175,7 +175,7 @@ export default function TaxForm() {
                   className="relative cursor-pointer rounded-md font-semibold text-primary focus-within:outline-none focus-within:ring-2 focus-within:ring-ring focus-within:ring-offset-2 hover:text-primary/80"
                 >
                   <span>Sube un archivo</span>
-                  <Input id="document" name="document" type="file" className="sr-only" accept="image/jpeg" onChange={handleFileChange} />
+                  <Input id="document" name="document" type="file" className="sr-only" accept="image/jpeg" onChange={handleFileChange} required/>
                 </Label>
                 <p className="pl-1">o arrástralo aquí</p>
               </div>

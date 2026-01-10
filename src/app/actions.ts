@@ -4,13 +4,13 @@ import { revalidatePath } from 'next/cache';
 import { db, storage } from '@/lib/firebase';
 import { addDoc, collection, getDocs, orderBy, query, serverTimestamp } from 'firebase/firestore';
 import { getDownloadURL, ref, uploadBytes } from 'firebase/storage';
-import { taxRecordSchema, type TaxRecord } from '@/types';
+import { taxRecordSchema, type TaxRecord, economicLicenseSchema, type EconomicLicense } from '@/types';
 import { z } from 'zod';
 
 export async function getTaxRecords(): Promise<TaxRecord[]> {
   try {
     const recordsCollection = collection(db, 'taxRecords');
-    const q = query(recordsCollection, orderBy('paymentDate', 'desc'));
+    const q = query(recordsCollection, orderBy('createdAt', 'desc'));
     const querySnapshot = await getDocs(q);
     const records = querySnapshot.docs.map(doc => ({
       id: doc.id,
@@ -22,10 +22,6 @@ export async function getTaxRecords(): Promise<TaxRecord[]> {
     return [];
   }
 }
-
-const formSchema = taxRecordSchema.extend({
-  document: z.any(),
-});
 
 export async function addTaxRecord(prevState: any, formData: FormData) {
   const document = formData.get('document') as File;
@@ -60,12 +56,10 @@ export async function addTaxRecord(prevState: any, formData: FormData) {
   const calculatedAmountEuros = parseFloat((amountBolivares / bcvRate).toFixed(2));
 
   try {
-    // Upload image to Firebase Storage
     const storageRef = ref(storage, `tax_documents/${Date.now()}_${document.name}`);
     const snapshot = await uploadBytes(storageRef, document);
     const downloadURL = await getDownloadURL(snapshot.ref);
 
-    // Add record to Firestore
     await addDoc(collection(db, 'taxRecords'), {
       ...validatedFields.data,
       amountEuros: calculatedAmountEuros,
@@ -78,5 +72,68 @@ export async function addTaxRecord(prevState: any, formData: FormData) {
   } catch (error) {
     console.error("Error adding document: ", error);
     return { message: 'Error al agregar el registro.', status: 'error' };
+  }
+}
+
+
+export async function getEconomicLicenses(): Promise<EconomicLicense[]> {
+  try {
+    const licensesCollection = collection(db, 'economicLicenses');
+    const q = query(licensesCollection, orderBy('createdAt', 'desc'));
+    const querySnapshot = await getDocs(q);
+    const licenses = querySnapshot.docs.map(doc => ({
+      id: doc.id,
+      ...doc.data(),
+    })) as EconomicLicense[];
+    return licenses;
+  } catch (error) {
+    console.error("Error fetching economic licenses: ", error);
+    return [];
+  }
+}
+
+export async function addEconomicLicense(prevState: any, formData: FormData) {
+  const document = formData.get('document') as File | null;
+  const rawData = Object.fromEntries(formData.entries());
+
+  const authorizedActivities = JSON.parse(rawData.authorizedActivities as string);
+
+  const dataToValidate = { ...rawData, authorizedActivities, capital: Number(rawData.capital) };
+
+  const validatedFields = economicLicenseSchema.safeParse(dataToValidate);
+
+  if (!validatedFields.success) {
+    console.log(validatedFields.error.flatten().fieldErrors);
+    return {
+      errors: validatedFields.error.flatten().fieldErrors,
+      message: 'Faltan campos o hay errores. No se pudo agregar la licencia.',
+      status: 'error',
+    };
+  }
+
+  try {
+    let downloadURL: string | undefined = undefined;
+    if (document && document.size > 0) {
+      if (document.type !== 'image/jpeg') {
+        return { message: 'El documento debe ser un archivo JPG.', status: 'error' };
+      }
+      const storageRef = ref(storage, `license_documents/${Date.now()}_${document.name}`);
+      const snapshot = await uploadBytes(storageRef, document);
+      downloadURL = await getDownloadURL(snapshot.ref);
+    }
+
+    const { document: _, ...dataToSave } = validatedFields.data;
+
+    await addDoc(collection(db, 'economicLicenses'), {
+      ...dataToSave,
+      documentUrl: downloadURL,
+      createdAt: serverTimestamp(),
+    });
+
+    revalidatePath('/licencias-economicas');
+    return { message: 'Licencia económica agregada con éxito.', status: 'success' };
+  } catch (error) {
+    console.error("Error adding license: ", error);
+    return { message: 'Error al agregar la licencia.', status: 'error' };
   }
 }

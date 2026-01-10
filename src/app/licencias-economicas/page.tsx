@@ -1,13 +1,13 @@
 import Header from "@/components/layout/Header";
-import TaxForm from "@/components/tax/TaxForm";
-import { getTaxRecords } from "@/app/actions";
-import TaxRecordsTable from "@/components/tax/TaxRecordsTable";
+import { getEconomicLicenses } from "@/app/actions";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import Link from 'next/link';
-import { Button } from '@/components/ui/button';
+import EconomicLicenseForm from "@/components/license/EconomicLicenseForm";
+import EconomicLicensesTable from "@/components/license/EconomicLicensesTable";
+import Link from "next/link";
+import { Button } from "@/components/ui/button";
 
-export default async function Home() {
-  const initialRecords = await getTaxRecords();
+export default async function EconomicLicensesPage() {
+  const initialLicenses = await getEconomicLicenses();
 
   return (
     <div className="min-h-screen flex flex-col">
@@ -15,24 +15,24 @@ export default async function Home() {
       <main className="flex-grow container mx-auto p-4 md:p-8">
         <div className="flex justify-end mb-4">
           <Button asChild>
-            <Link href="/licencias-economicas">Ir a Licencias Económicas</Link>
+            <Link href="/">Ir a Pagos de Impuestos</Link>
           </Button>
         </div>
         <div className="grid grid-cols-1 lg:grid-cols-5 gap-8 items-start">
           <Card className="lg:col-span-2 shadow-lg">
             <CardHeader>
-              <CardTitle className="text-2xl font-headline">Registrar Nuevo Pago de Impuestos</CardTitle>
+              <CardTitle className="text-2xl font-headline">Registrar Nueva Licencia Económica</CardTitle>
             </CardHeader>
             <CardContent>
-              <TaxForm />
+              <EconomicLicenseForm />
             </CardContent>
           </Card>
           <Card className="lg:col-span-3 shadow-lg">
              <CardHeader>
-              <CardTitle className="text-2xl font-headline">Historial de Pagos de Impuestos</CardTitle>
+              <CardTitle className="text-2xl font-headline">Historial de Licencias</CardTitle>
             </CardHeader>
             <CardContent>
-              <TaxRecordsTable initialRecords={initialRecords} />
+              <EconomicLicensesTable initialLicenses={initialLicenses} />
             </CardContent>
           </Card>
         </div>

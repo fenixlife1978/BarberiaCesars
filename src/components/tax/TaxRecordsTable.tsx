@@ -21,12 +21,11 @@ type TaxRecordsTableProps = {
 };
 
 export default function TaxRecordsTable({ initialRecords }: TaxRecordsTableProps) {
-  const [records, setRecords] = useState<TaxRecord[]>(initialRecords);
   const [dateFilter, setDateFilter] = useState('');
   const [descriptionFilter, setDescriptionFilter] = useState('');
 
   const filteredRecords = useMemo(() => {
-    return records.filter((record) => {
+    return initialRecords.filter((record) => {
       const paymentDate = record.paymentDate || '';
       const description = record.description?.toLowerCase() || '';
 
@@ -37,7 +36,7 @@ export default function TaxRecordsTable({ initialRecords }: TaxRecordsTableProps
       
       return dateMatch && descriptionMatch;
     });
-  }, [records, dateFilter, descriptionFilter]);
+  }, [initialRecords, dateFilter, descriptionFilter]);
 
   const clearFilters = () => {
     setDateFilter('');
@@ -46,6 +45,14 @@ export default function TaxRecordsTable({ initialRecords }: TaxRecordsTableProps
   
   const formatCurrency = (amount: number) => {
     return new Intl.NumberFormat('de-DE', { minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(amount);
+  }
+
+  const formatDate = (dateString: string) => {
+    try {
+      return format(new Date(dateString + 'T00:00:00'), "d MMM yyyy", { locale: es });
+    } catch (e) {
+      return "Fecha inválida";
+    }
   }
 
   return (
@@ -84,7 +91,7 @@ export default function TaxRecordsTable({ initialRecords }: TaxRecordsTableProps
               filteredRecords.map((record) => (
                 <TableRow key={record.id}>
                   <TableCell className="font-medium whitespace-nowrap">
-                    {format(new Date(record.paymentDate + 'T00:00:00'), "d MMM yyyy", { locale: es })}
+                    {formatDate(record.paymentDate)}
                   </TableCell>
                   <TableCell>{record.description}</TableCell>
                   <TableCell className="text-right whitespace-nowrap">{formatCurrency(record.amountBolivares)}</TableCell>
