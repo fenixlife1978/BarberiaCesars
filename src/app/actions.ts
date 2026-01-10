@@ -15,20 +15,11 @@ import {
 
 const STATIC_USER_ID = 'default-user';
 
-// Ensure the default user document exists
-async function ensureDefaultUser() {
-    const userDocRef = doc(db, 'users', STATIC_USER_ID);
-    const userDoc = await getDoc(userDocRef);
-    if (!userDoc.exists()) {
-        await setDoc(userDocRef, { email: 'default@user.com', id: STATIC_USER_ID });
-    }
-}
-
+// Helper function to serialize data, especially for objects from Firestore
 const serializeData = (data: any) => JSON.parse(JSON.stringify(data));
 
 // Tax Records Actions
 export async function getTaxRecords(): Promise<TaxRecord[]> {
-  await ensureDefaultUser();
   try {
     const recordsCollection = collection(db, 'users', STATIC_USER_ID, 'taxRecords');
     const q = query(recordsCollection, orderBy('createdAt', 'desc'));
@@ -45,7 +36,6 @@ export async function getTaxRecords(): Promise<TaxRecord[]> {
 }
 
 export async function addTaxRecord(prevState: any, formData: FormData) {
-  await ensureDefaultUser();
   const settledMonths = formData.getAll('settledMonths') as string[];
   const documents = formData.getAll('documents').map(d => d.toString());
   
@@ -97,7 +87,6 @@ export async function addTaxRecord(prevState: any, formData: FormData) {
 }
 
 export async function updateTaxRecord(prevState: any, formData: FormData) {
-  await ensureDefaultUser();
   const settledMonths = formData.getAll('settledMonths') as string[];
   const documents = formData.getAll('documents').map(d => d.toString());
   
@@ -148,7 +137,6 @@ export async function updateTaxRecord(prevState: any, formData: FormData) {
 }
 
 export async function deleteTaxRecord(id: string) {
-    await ensureDefaultUser();
     try {
         const recordRef = doc(db, 'users', STATIC_USER_ID, 'taxRecords', id);
         await deleteDoc(recordRef);
@@ -162,7 +150,6 @@ export async function deleteTaxRecord(id: string) {
 
 // Economic Licenses Actions
 export async function getEconomicLicenses(): Promise<EconomicLicense[]> {
-    await ensureDefaultUser();
   try {
     const licensesCollection = collection(db, 'users', STATIC_USER_ID, 'economicLicenses');
     const q = query(licensesCollection, orderBy('createdAt', 'desc'));
@@ -179,7 +166,6 @@ export async function getEconomicLicenses(): Promise<EconomicLicense[]> {
 }
 
 export async function addEconomicLicense(prevState: any, formData: FormData) {
-  await ensureDefaultUser();
   const rawData = Object.fromEntries(formData.entries());
   const authorizedActivities = JSON.parse(rawData.authorizedActivities as string);
   const documents = formData.getAll('documents').map(d => d.toString());
@@ -222,7 +208,6 @@ export async function addEconomicLicense(prevState: any, formData: FormData) {
 }
 
 export async function deleteEconomicLicense(id: string) {
-    await ensureDefaultUser();
     try {
         const licenseRef = doc(db, 'users', STATIC_USER_ID, 'economicLicenses', id);
         await deleteDoc(licenseRef);
@@ -236,7 +221,6 @@ export async function deleteEconomicLicense(id: string) {
 
 // Settings Actions
 export async function getSettings(): Promise<Settings | null> {
-  await ensureDefaultUser();
   try {
     const settingsDocRef = doc(db, 'users', STATIC_USER_ID, 'settings', 'general');
     const settingsDoc = await getDoc(settingsDocRef);
@@ -253,7 +237,6 @@ export async function getSettings(): Promise<Settings | null> {
 }
 
 export async function updateSettings(prevState: any, formData: FormData) {
-  await ensureDefaultUser();
   const rawData = {
     logoUrl: formData.get('logoUrl'),
   };
@@ -270,6 +253,7 @@ export async function updateSettings(prevState: any, formData: FormData) {
 
   try {
     const settingsRef = doc(db, 'users', STATIC_USER_ID, 'settings', 'general');
+    // Using setDoc with merge:true to create or update the document.
     await setDoc(settingsRef, validatedFields.data, { merge: true });
 
     revalidatePath('/ajustes');
