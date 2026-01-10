@@ -4,12 +4,13 @@ import { getTaxRecords } from "@/app/actions";
 import TaxRecordsTable from "@/components/tax/TaxRecordsTable";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import TaxChart from "@/components/tax/TaxChart";
-import { getAuthenticatedUser } from "@/app/auth/get-authenticated-user";
+import { getAuthenticatedUser } from "@/app/auth/get-authenticated_user";
 import { redirect } from "next/navigation";
 
 export default async function ImpuestosPage() {
   const user = await getAuthenticatedUser();
   if (!user) {
+    // This check is redundant due to layout, but good for safety
     redirect('/login');
   }
 

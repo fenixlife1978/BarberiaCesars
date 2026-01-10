@@ -9,6 +9,7 @@ import { redirect } from 'next/navigation';
 export default async function EconomicLicensesPage() {
   const user = await getAuthenticatedUser();
   if (!user) {
+    // This check is redundant due to layout, but good for safety
     redirect('/login');
   }
   const initialLicenses = await getEconomicLicenses(user.uid);
@@ -26,7 +27,7 @@ export default async function EconomicLicensesPage() {
         <Card className="lg:col-span-3 shadow-lg">
            <CardHeader>
             <CardTitle className="text-2xl font-headline">Historial de Licencias</CardTitle>
-          </CardHeader>
+          </Header>
           <CardContent>
             <EconomicLicensesTable initialLicenses={initialLicenses} />
           </CardContent>

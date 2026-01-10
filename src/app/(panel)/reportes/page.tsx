@@ -8,6 +8,7 @@ import { redirect } from 'next/navigation';
 export default async function ReportesPage() {
   const user = await getAuthenticatedUser();
   if (!user) {
+    // This check is redundant due to layout, but good for safety
     redirect('/login');
   }
 
