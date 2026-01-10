@@ -3,7 +3,7 @@
 
 import { revalidatePath } from 'next/cache';
 import { db } from '@/lib/firebase';
-import { addDoc, collection, getDocs, orderBy, query, serverTimestamp, doc, updateDoc, limit } from 'firebase/firestore';
+import { addDoc, collection, getDocs, orderBy, query, serverTimestamp, doc, updateDoc, limit, getDoc } from 'firebase/firestore';
 import { taxRecordSchema, type TaxRecord, economicLicenseSchema, type EconomicLicense, taxRecordWithIdSchema, settingsSchema, type Settings } from '@/types';
 import { getAuthenticatedUser } from './auth/get-authenticated-user';
 
@@ -204,14 +204,14 @@ export async function addEconomicLicense(prevState: any, formData: FormData) {
 export async function getSettings(userId: string): Promise<Settings | null> {
   try {
     const settingsDocRef = doc(db, 'users', userId, 'settings', 'general');
-    const settingsDoc = await getDocs(query(collection(db, 'users', userId, 'settings'), limit(1)));
+    const settingsDoc = await getDoc(settingsDocRef);
 
 
-    if (settingsDoc.empty) {
+    if (!settingsDoc.exists()) {
       return null;
     }
-    const settingsData = settingsDoc.docs[0];
-    return serializeData({ id: settingsData.id, ...settingsData.data() }) as Settings;
+    const settingsData = settingsDoc.data();
+    return serializeData({ id: settingsDoc.id, ...settingsData }) as Settings;
   } catch (error) {
     console.error("Error fetching settings: ", error);
     return null;
@@ -240,7 +240,7 @@ export async function updateSettings(prevState: any, formData: FormData) {
 
   try {
     const settingsRef = doc(db, 'users', user.uid, 'settings', 'general');
-    await updateDoc(settingsRef, validatedFields.data, { merge: true });
+    await updateDoc(settingsRef, validatedFields.data);
 
     revalidatePath('/ajustes');
     revalidatePath('/(panel)', 'layout'); // To update logo in header
