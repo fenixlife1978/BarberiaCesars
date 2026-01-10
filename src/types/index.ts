@@ -6,6 +6,7 @@ export const taxRecordSchema = z.object({
   amountBolivares: z.coerce.number().positive({ message: "El monto debe ser un número positivo." }),
   bcvRate: z.coerce.number().positive({ message: "La tasa BCV debe ser un número positivo." }),
   amountEuros: z.coerce.number(),
+  document: z.string().min(1, { message: "El documento es requerido." }),
 });
 
 export type TaxRecordFormValues = z.infer<typeof taxRecordSchema>;
@@ -51,7 +52,7 @@ export const economicLicenseSchema = z.object({
   expirationDate: z.string().min(1, 'La fecha de vencimiento es requerida.'),
   
   authorizedActivities: z.array(authorizedActivitySchema).min(1, 'Debe haber al menos un rubro autorizado.'),
-  document: z.any().optional(),
+  document: z.string().optional(),
 });
 
 export type EconomicLicenseFormValues = z.infer<typeof economicLicenseSchema>;

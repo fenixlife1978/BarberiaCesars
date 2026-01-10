@@ -13,6 +13,7 @@ import { useToast } from '@/hooks/use-toast';
 import { addTaxRecord } from '@/app/actions';
 import { UploadCloud, Loader2 } from 'lucide-react';
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '../ui/form';
+import { processImage } from '@/lib/image-utils';
 
 const initialState = {
   message: '',
@@ -43,6 +44,7 @@ export default function TaxForm() {
       amountBolivares: 0,
       bcvRate: 0,
       amountEuros: 0,
+      document: '',
     },
   });
 
@@ -77,21 +79,24 @@ export default function TaxForm() {
     }
   }, [state, toast, form]);
 
-  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (preview) {
       URL.revokeObjectURL(preview);
-    }
-    if (file && file.type === 'image/jpeg') {
-      const previewUrl = URL.createObjectURL(file);
-      setPreview(previewUrl);
-    } else {
       setPreview(null);
-      if(file) {
+      setValue('document', '');
+    }
+    if (file) {
+      try {
+        const compressedImage = await processImage(file);
+        setPreview(compressedImage);
+        setValue('document', compressedImage);
+      } catch (error) {
+        console.error(error);
         toast({
           variant: 'destructive',
-          title: 'Archivo no válido',
-          description: 'Por favor, sube un archivo JPG.',
+          title: 'Error de imagen',
+          description: 'No se pudo procesar el archivo. Por favor, intenta con otra imagen.',
         });
       }
     }
@@ -161,7 +166,7 @@ export default function TaxForm() {
           <Input type="number" {...form.register('amountEuros')} readOnly className="mt-2 bg-muted/50" />
         </div>
         <div>
-          <Label htmlFor="document">Comprobante (JPG)</Label>
+          <Label htmlFor="document-input">Comprobante (JPG)</Label>
           <div className="mt-2 flex justify-center rounded-lg border border-dashed border-border px-6 py-10">
             <div className="text-center">
               {preview ? (
@@ -171,17 +176,29 @@ export default function TaxForm() {
               )}
               <div className="mt-4 flex text-sm leading-6 text-muted-foreground">
                 <Label
-                  htmlFor="document"
+                  htmlFor="document-input"
                   className="relative cursor-pointer rounded-md font-semibold text-primary focus-within:outline-none focus-within:ring-2 focus-within:ring-ring focus-within:ring-offset-2 hover:text-primary/80"
                 >
                   <span>Sube un archivo</span>
-                  <Input id="document" name="document" type="file" className="sr-only" accept="image/jpeg" onChange={handleFileChange} required/>
+                  <Input id="document-input" name="document-input" type="file" className="sr-only" accept="image/jpeg,image/png" onChange={handleFileChange} />
                 </Label>
                 <p className="pl-1">o arrástralo aquí</p>
               </div>
-              <p className="text-xs leading-5 text-muted-foreground">Solo archivos JPG de hasta 10MB</p>
+              <p className="text-xs leading-5 text-muted-foreground">Imágenes de hasta 10MB</p>
             </div>
           </div>
+          <FormField
+            control={control}
+            name="document"
+            render={({ field }) => (
+              <FormItem className='hidden'>
+                <FormControl>
+                  <Input type="hidden" {...field} />
+                </FormControl>
+                 <FormMessage />
+              </FormItem>
+            )}
+          />
         </div>
         <SubmitButton isPending={isPending} />
       </form>

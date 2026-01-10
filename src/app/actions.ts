@@ -1,11 +1,9 @@
 'use server';
 
 import { revalidatePath } from 'next/cache';
-import { db, storage } from '@/lib/firebase';
+import { db } from '@/lib/firebase';
 import { addDoc, collection, getDocs, orderBy, query, serverTimestamp } from 'firebase/firestore';
-import { getDownloadURL, ref, uploadBytes } from 'firebase/storage';
 import { taxRecordSchema, type TaxRecord, economicLicenseSchema, type EconomicLicense } from '@/types';
-import { z } from 'zod';
 
 export async function getTaxRecords(): Promise<TaxRecord[]> {
   try {
@@ -24,22 +22,13 @@ export async function getTaxRecords(): Promise<TaxRecord[]> {
 }
 
 export async function addTaxRecord(prevState: any, formData: FormData) {
-  const document = formData.get('document') as File;
-  
-  if (!document || document.size === 0) {
-    return { message: 'El documento es requerido.', status: 'error' };
-  }
-
-  if (document.type !== 'image/jpeg') {
-    return { message: 'El documento debe ser un archivo JPG.', status: 'error' };
-  }
-
   const rawFormData = {
     paymentDate: formData.get('paymentDate'),
     description: formData.get('description'),
     amountBolivares: formData.get('amountBolivares'),
     bcvRate: formData.get('bcvRate'),
     amountEuros: formData.get('amountEuros'),
+    document: formData.get('document'),
   };
 
   const validatedFields = taxRecordSchema.safeParse(rawFormData);
@@ -52,18 +41,16 @@ export async function addTaxRecord(prevState: any, formData: FormData) {
     };
   }
   
-  const { amountBolivares, bcvRate } = validatedFields.data;
+  const { amountBolivares, bcvRate, document, ...rest } = validatedFields.data;
   const calculatedAmountEuros = parseFloat((amountBolivares / bcvRate).toFixed(2));
 
   try {
-    const storageRef = ref(storage, `tax_documents/${Date.now()}_${document.name}`);
-    const snapshot = await uploadBytes(storageRef, document);
-    const downloadURL = await getDownloadURL(snapshot.ref);
-
     await addDoc(collection(db, 'taxRecords'), {
-      ...validatedFields.data,
+      ...rest,
+      amountBolivares,
+      bcvRate,
       amountEuros: calculatedAmountEuros,
-      documentUrl: downloadURL,
+      documentUrl: document, // Saving base64 string
       createdAt: serverTimestamp(),
     });
 
@@ -93,9 +80,8 @@ export async function getEconomicLicenses(): Promise<EconomicLicense[]> {
 }
 
 export async function addEconomicLicense(prevState: any, formData: FormData) {
-  const document = formData.get('document') as File | null;
   const rawData = Object.fromEntries(formData.entries());
-
+  
   const authorizedActivities = JSON.parse(rawData.authorizedActivities as string);
 
   const dataToValidate = { ...rawData, authorizedActivities, capital: Number(rawData.capital) };
@@ -112,21 +98,11 @@ export async function addEconomicLicense(prevState: any, formData: FormData) {
   }
 
   try {
-    let downloadURL: string | undefined = undefined;
-    if (document && document.size > 0) {
-      if (document.type !== 'image/jpeg') {
-        return { message: 'El documento debe ser un archivo JPG.', status: 'error' };
-      }
-      const storageRef = ref(storage, `license_documents/${Date.now()}_${document.name}`);
-      const snapshot = await uploadBytes(storageRef, document);
-      downloadURL = await getDownloadURL(snapshot.ref);
-    }
-
-    const { document: _, ...dataToSave } = validatedFields.data;
+    const { document, ...dataToSave } = validatedFields.data;
 
     await addDoc(collection(db, 'economicLicenses'), {
       ...dataToSave,
-      documentUrl: downloadURL,
+      documentUrl: document, // Saving base64 string or undefined
       createdAt: serverTimestamp(),
     });
 
