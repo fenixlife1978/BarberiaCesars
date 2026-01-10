@@ -6,11 +6,11 @@ const PROTECTED_ROUTES = ['/impuestos', '/licencias-economicas', '/ajustes'];
 const PUBLIC_ROUTES = ['/login'];
 
 export async function middleware(request: NextRequest) {
-  // const { pathname } = request.nextUrl;
-  // const cookieStore = cookies();
-  // const session = cookieStore.get('session');
+  const { pathname } = request.nextUrl;
+  const cookieStore = cookies();
+  const session = cookieStore.get('session');
 
-  // const isProtectedRoute = PROTECTED_ROUTES.some(route => pathname.startsWith(route));
+  const isProtectedRoute = PROTECTED_ROUTES.some(route => pathname.startsWith(route));
 
   // if (isProtectedRoute && !session) {
   //   return NextResponse.redirect(new URL('/login', request.url));

@@ -41,7 +41,7 @@ const nextConfig: NextConfig = {
     return [
       {
         source: '/',
-        destination: '/impuestos',
+        destination: '/ajustes',
       },
     ]
   },
