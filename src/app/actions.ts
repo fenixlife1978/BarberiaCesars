@@ -1,9 +1,10 @@
+
 'use server';
 
 import { revalidatePath } from 'next/cache';
 import { db } from '@/lib/firebase';
-import { addDoc, collection, getDocs, orderBy, query, serverTimestamp, doc, updateDoc } from 'firebase/firestore';
-import { taxRecordSchema, type TaxRecord, economicLicenseSchema, type EconomicLicense, taxRecordWithIdSchema } from '@/types';
+import { addDoc, collection, getDocs, orderBy, query, serverTimestamp, doc, updateDoc, limit } from 'firebase/firestore';
+import { taxRecordSchema, type TaxRecord, economicLicenseSchema, type EconomicLicense, taxRecordWithIdSchema, settingsSchema, type Settings } from '@/types';
 
 // Función auxiliar para limpiar datos de Firebase (Timestamps, etc)
 const serializeData = (data: any) => JSON.parse(JSON.stringify(data));
@@ -69,7 +70,7 @@ export async function addTaxRecord(prevState: any, formData: FormData) {
 
   // REVALIDAR FUERA DEL TRY/CATCH
   if (success) {
-    revalidatePath('/');
+    revalidatePath('/impuestos');
     return { message: 'Registro de impuesto agregado con éxito.', status: 'success' };
   }
 }
@@ -119,7 +120,7 @@ export async function updateTaxRecord(prevState: any, formData: FormData) {
   }
 
   if (success) {
-    revalidatePath('/');
+    revalidatePath('/impuestos');
     return { message: 'Registro de impuesto actualizado con éxito.', status: 'success' };
   }
 }
@@ -177,5 +178,76 @@ export async function addEconomicLicense(prevState: any, formData: FormData) {
   if (success) {
     revalidatePath('/licencias-economicas');
     return { message: 'Licencia económica agregada con éxito.', status: 'success' };
+  }
+}
+
+// Settings Actions
+export async function getSettings(): Promise<Settings | null> {
+  try {
+    const settingsCollection = collection(db, 'settings');
+    const q = query(settingsCollection, limit(1));
+    const querySnapshot = await getDocs(q);
+
+    if (querySnapshot.empty) {
+      return null;
+    }
+    const settingsDoc = querySnapshot.docs[0];
+    return serializeData({ id: settingsDoc.id, ...settingsDoc.data() }) as Settings;
+  } catch (error) {
+    console.error("Error fetching settings: ", error);
+    return null;
+  }
+}
+
+export async function updateSettings(prevState: any, formData: FormData) {
+  const rawData = {
+    accessKey: formData.get('accessKey'),
+    logoUrl: formData.get('logoUrl'),
+  };
+
+  const validatedFields = settingsSchema.safeParse(rawData);
+
+  if (!validatedFields.success) {
+    return {
+      errors: validatedFields.error.flatten().fieldErrors,
+      message: 'Datos inválidos.',
+      status: 'error',
+    };
+  }
+
+  try {
+    const currentSettings = await getSettings();
+    const { accessKey, logoUrl } = validatedFields.data;
+
+    const dataToUpdate: { accessKey?: string; logoUrl?: string } = {};
+
+    if (accessKey) {
+      dataToUpdate.accessKey = accessKey;
+    }
+    if (logoUrl) {
+      dataToUpdate.logoUrl = logoUrl;
+    }
+
+    if (Object.keys(dataToUpdate).length === 0) {
+      return { message: 'No hay cambios para guardar.', status: 'success' };
+    }
+
+    if (currentSettings) {
+      // Update existing settings
+      const settingsRef = doc(db, 'settings', currentSettings.id);
+      await updateDoc(settingsRef, dataToUpdate);
+    } else {
+      // Create new settings document
+      await addDoc(collection(db, 'settings'), dataToUpdate);
+    }
+
+    revalidatePath('/ajustes');
+    revalidatePath('/login'); // To update logo on login page
+    revalidatePath('/(panel)', 'layout'); // To update logo in header
+
+    return { message: 'Ajustes guardados con éxito.', status: 'success' };
+  } catch (error) {
+    console.error("Error updating settings: ", error);
+    return { message: 'Error al guardar los ajustes.', status: 'error' };
   }
 }

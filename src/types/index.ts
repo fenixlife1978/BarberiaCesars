@@ -1,3 +1,4 @@
+
 import { z } from "zod";
 
 export const months = [
@@ -80,3 +81,17 @@ export type EconomicLicense = EconomicLicenseFormValues & {
     nanoseconds: number;
   };
 };
+
+export const settingsSchema = z.object({
+  accessKey: z.string().max(6, 'La clave de acceso no debe exceder los 6 dígitos.').optional().or(z.literal('')),
+  logoUrl: z.string().url('URL de logo inválida.').or(z.literal('')).optional(),
+});
+
+export type SettingsFormValues = z.infer<typeof settingsSchema>;
+
+export type Settings = {
+  id: string;
+  accessKey?: string;
+  logoUrl?: string;
+};
+
