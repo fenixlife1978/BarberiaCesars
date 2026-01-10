@@ -1,8 +1,13 @@
+
 'use server';
 
 import { revalidatePath } from 'next/cache';
 import { db } from '@/lib/firebase';
-import { addDoc, collection, getDocs, orderBy, query, serverTimestamp, doc, updateDoc, getDoc, setDoc, deleteDoc, where } from 'firebase/firestore';
+import { 
+  addDoc, collection, getDocs, orderBy, query, 
+  serverTimestamp, doc, updateDoc, getDoc, 
+  setDoc, deleteDoc
+} from 'firebase/firestore';
 import { 
   taxRecordSchema, 
   type TaxRecord, 
@@ -13,12 +18,14 @@ import {
   type Settings 
 } from '@/types';
 
+// Se usará este ID de usuario estático para todas las operaciones.
 const STATIC_USER_ID = 'default-user';
 
-// Helper function to serialize data, especially for objects from Firestore
+// Helper function to serialize data
 const serializeData = (data: any) => JSON.parse(JSON.stringify(data));
 
-// Tax Records Actions
+// --- Tax Records Actions ---
+
 export async function getTaxRecords(): Promise<TaxRecord[]> {
   try {
     const recordsCollection = collection(db, 'users', STATIC_USER_ID, 'taxRecords');
@@ -63,7 +70,6 @@ export async function addTaxRecord(prevState: any, formData: FormData) {
   const { amountBolivares, bcvRate, ...rest } = validatedFields.data;
   const calculatedAmountEuros = parseFloat((amountBolivares / bcvRate).toFixed(2));
 
-  let success = false;
   try {
     const recordsCollection = collection(db, 'users', STATIC_USER_ID, 'taxRecords');
     await addDoc(recordsCollection, {
@@ -74,15 +80,12 @@ export async function addTaxRecord(prevState: any, formData: FormData) {
       createdAt: serverTimestamp(),
       userId: STATIC_USER_ID,
     });
-    success = true;
+    
+    revalidatePath('/impuestos');
+    return { message: 'Registro de impuesto agregado con éxito.', status: 'success' };
   } catch (error) {
     console.error("Error adding document: ", error);
     return { message: 'Error al agregar el registro.', status: 'error' };
-  }
-
-  if (success) {
-    revalidatePath('/impuestos');
-    return { message: 'Registro de impuesto agregado con éxito.', status: 'success' };
   }
 }
 
@@ -115,7 +118,6 @@ export async function updateTaxRecord(prevState: any, formData: FormData) {
   const { id, amountBolivares, bcvRate, ...rest } = validatedFields.data;
   const calculatedAmountEuros = parseFloat((amountBolivares / bcvRate).toFixed(2));
   
-  let success = false;
   try {
     const recordRef = doc(db, 'users', STATIC_USER_ID, 'taxRecords', id);
     await updateDoc(recordRef, {
@@ -124,15 +126,11 @@ export async function updateTaxRecord(prevState: any, formData: FormData) {
       bcvRate,
       amountEuros: calculatedAmountEuros,
     });
-    success = true;
+    revalidatePath('/impuestos');
+    return { message: 'Registro de impuesto actualizado con éxito.', status: 'success' };
   } catch (error) {
     console.error("Error updating document: ", error);
     return { message: 'Error al actualizar el registro.', status: 'error' };
-  }
-
-  if (success) {
-    revalidatePath('/impuestos');
-    return { message: 'Registro de impuesto actualizado con éxito.', status: 'success' };
   }
 }
 
@@ -148,7 +146,8 @@ export async function deleteTaxRecord(id: string) {
     }
 }
 
-// Economic Licenses Actions
+// --- Economic Licenses Actions ---
+
 export async function getEconomicLicenses(): Promise<EconomicLicense[]> {
   try {
     const licensesCollection = collection(db, 'users', STATIC_USER_ID, 'economicLicenses');
@@ -187,7 +186,6 @@ export async function addEconomicLicense(prevState: any, formData: FormData) {
     };
   }
 
-  let success = false;
   try {
     const licensesCollection = collection(db, 'users', STATIC_USER_ID, 'economicLicenses');
     await addDoc(licensesCollection, {
@@ -195,15 +193,11 @@ export async function addEconomicLicense(prevState: any, formData: FormData) {
       createdAt: serverTimestamp(),
       userId: STATIC_USER_ID,
     });
-    success = true;
+    revalidatePath('/licencias-economicas');
+    return { message: 'Licencia económica agregada con éxito.', status: 'success' };
   } catch (error) {
     console.error("Error adding license: ", error);
     return { message: 'Error al agregar la licencia.', status: 'error' };
-  }
-
-  if (success) {
-    revalidatePath('/licencias-economicas');
-    return { message: 'Licencia económica agregada con éxito.', status: 'success' };
   }
 }
 
@@ -219,7 +213,8 @@ export async function deleteEconomicLicense(id: string) {
     }
 }
 
-// Settings Actions
+// --- Settings Actions ---
+
 export async function getSettings(): Promise<Settings | null> {
   try {
     const settingsDocRef = doc(db, 'users', STATIC_USER_ID, 'settings', 'general');
@@ -253,11 +248,13 @@ export async function updateSettings(prevState: any, formData: FormData) {
 
   try {
     const settingsRef = doc(db, 'users', STATIC_USER_ID, 'settings', 'general');
-    // Using setDoc with merge:true to create or update the document.
-    await setDoc(settingsRef, validatedFields.data, { merge: true });
+    
+    await setDoc(settingsRef, {
+        logoUrl: validatedFields.data.logoUrl || ""
+    }, { merge: true });
 
     revalidatePath('/ajustes');
-    revalidatePath('/(panel)', 'layout'); // To update logo in header
+    revalidatePath('/(panel)', 'layout');
 
     return { message: 'Ajustes guardados con éxito.', status: 'success' };
   } catch (error) {
@@ -265,3 +262,5 @@ export async function updateSettings(prevState: any, formData: FormData) {
     return { message: 'Error al guardar los ajustes.', status: 'error' };
   }
 }
+
+    
