@@ -11,7 +11,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
 import { useToast } from '@/hooks/use-toast';
-import { Loader2, UploadCloud, X } from 'lucide-react';
+import { Loader2, UploadCloud, X, Eye, EyeOff } from 'lucide-react';
 import Image from 'next/image';
 import { processImage } from '@/lib/image-utils';
 
@@ -39,6 +39,7 @@ export default function SettingsForm({ initialSettings }: SettingsFormProps) {
   const { toast } = useToast();
   const formRef = useRef<HTMLFormElement>(null);
   const [logoPreview, setLogoPreview] = useState<string | null>(initialSettings?.logoUrl || null);
+  const [showKey, setShowKey] = useState(false);
 
   const form = useForm<SettingsFormValues>({
     resolver: zodResolver(settingsSchema),
@@ -111,14 +112,27 @@ export default function SettingsForm({ initialSettings }: SettingsFormProps) {
           render={({ field }) => (
             <FormItem>
               <FormLabel>Nueva Clave de Acceso (6 dígitos)</FormLabel>
-              <FormControl>
-                <Input
-                  type="password"
-                  maxLength={6}
-                  placeholder="Dejar en blanco para no cambiar"
-                  {...field}
-                />
-              </FormControl>
+              <div className="relative">
+                <FormControl>
+                  <Input
+                    type={showKey ? 'text' : 'password'}
+                    maxLength={6}
+                    placeholder="Dejar en blanco para no cambiar"
+                    {...field}
+                    className="pr-10"
+                  />
+                </FormControl>
+                <Button
+                    type="button"
+                    variant="ghost"
+                    size="icon"
+                    className="absolute inset-y-0 right-0 h-full px-3"
+                    onClick={() => setShowKey(!showKey)}
+                    aria-label={showKey ? 'Ocultar clave' : 'Mostrar clave'}
+                >
+                    {showKey ? <EyeOff /> : <Eye />}
+                </Button>
+              </div>
               <FormMessage />
             </FormItem>
           )}
