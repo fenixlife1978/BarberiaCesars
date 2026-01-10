@@ -2,7 +2,7 @@
 import Image from 'next/image';
 import Link from 'next/link';
 import { Button } from '../ui/button';
-import { Sheet, SheetContent, SheetTrigger } from '../ui/sheet';
+import { Sheet, SheetContent, SheetTrigger, SheetTitle, SheetDescription } from '../ui/sheet';
 import { Menu, Settings, LogOut, Home, FileText } from 'lucide-react';
 import LogoutButton from './LogoutButton';
 
@@ -40,9 +40,11 @@ export default function Header() {
             <SheetTrigger asChild>
               <Button variant="ghost" size="icon">
                 <Menu />
+                <span className="sr-only">Abrir menú</span>
               </Button>
             </SheetTrigger>
             <SheetContent side="right" className="w-[250px]">
+               <SheetTitle className="sr-only">Menú de Navegación</SheetTitle>
               <nav className="flex flex-col gap-4 mt-8">
                  <Button variant="ghost" className="justify-start" asChild>
                     <Link href="/impuestos"><Home className="mr-2"/> Pagos de Impuestos</Link>
