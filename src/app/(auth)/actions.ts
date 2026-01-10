@@ -3,25 +3,10 @@
 import { getAuth } from 'firebase-admin/auth';
 import { cookies } from 'next/headers';
 import { redirect } from 'next/navigation';
-import { initializeApp, getApps, App } from 'firebase-admin/app';
-import { firebaseAdminConfig } from '@/firebase/admin-config';
+import { adminApp } from '@/lib/firebase-admin';
 import { getFirestore } from 'firebase-admin/firestore';
 import { z } from 'zod';
 import { revalidatePath } from 'next/cache';
-
-// Initialize Firebase Admin SDK
-let adminApp: App;
-if (!getApps().length) {
-  adminApp = initializeApp({
-    credential: {
-      projectId: firebaseAdminConfig.projectId,
-      clientEmail: firebaseAdminConfig.clientEmail,
-      privateKey: firebaseAdminConfig.privateKey,
-    },
-  });
-} else {
-  adminApp = getApps()[0];
-}
 
 
 const auth = getAuth(adminApp);

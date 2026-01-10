@@ -1,3 +1,6 @@
+import { config } from 'dotenv';
+config();
+
 function safeBase64Decode(str: string): string {
   try {
     return Buffer.from(str, 'base64').toString('utf8');

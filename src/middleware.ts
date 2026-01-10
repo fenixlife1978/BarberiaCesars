@@ -1,61 +1,29 @@
 import { NextResponse, type NextRequest } from 'next/server';
-import { getAuth } from 'firebase-admin/auth';
-import { initializeApp, getApps, App } from 'firebase-admin/app';
-import { firebaseAdminConfig } from '@/firebase/admin-config';
 
-// Force Next.js to use the Node.js runtime
-export const runtime = 'nodejs';
+// No se usa firebase-admin aquí para evitar errores de Edge Runtime.
+// La verificación de la cookie se hace en los layouts o páginas.
 
-// Initialize Firebase Admin SDK
-let adminApp: App;
-if (!getApps().length) {
-  adminApp = initializeApp({
-    credential: {
-      projectId: firebaseAdminConfig.projectId,
-      clientEmail: firebaseAdminConfig.clientEmail,
-      privateKey: firebaseAdminConfig.privateKey,
-    },
-  });
-} else {
-  adminApp = getApps()[0];
-}
-
-
-export async function middleware(request: NextRequest) {
+export function middleware(request: NextRequest) {
   const sessionCookie = request.cookies.get('__session')?.value;
   const { pathname } = request.nextUrl;
 
   const isAuthPage = pathname.startsWith('/login') || pathname.startsWith('/signup');
-  
-  if (!sessionCookie) {
-    if (isAuthPage) {
-      return NextResponse.next();
-    }
+  const isProtectedRoute = !isAuthPage && pathname !== '/';
+
+  // Si no hay cookie y se intenta acceder a una ruta protegida, redirigir a login.
+  if (!sessionCookie && isProtectedRoute) {
     return NextResponse.redirect(new URL('/login', request.url));
   }
 
-  try {
-    // Verify the session cookie
-    await getAuth(adminApp).verifySessionCookie(sessionCookie, true);
-
-    // If the user is authenticated and tries to access an auth page, redirect to the panel
-    if (isAuthPage) {
-      return NextResponse.redirect(new URL('/impuestos', request.url));
-    }
-    
-    return NextResponse.next();
-  } catch (error) {
-    // Session cookie is invalid or expired
-    if (isAuthPage) {
-      return NextResponse.next();
-    }
-    // Clear the invalid cookie by redirecting
-    const response = NextResponse.redirect(new URL('/login', request.url));
-    response.cookies.set('__session', '', { maxAge: -1 });
-    return response;
+  // Si hay cookie y se intenta acceder a una página de autenticación, redirigir al panel.
+  if (sessionCookie && isAuthPage) {
+    return NextResponse.redirect(new URL('/impuestos', request.url));
   }
+
+  return NextResponse.next();
 }
 
 export const config = {
+  // Excluimos rutas que no necesitan protección: api, archivos estáticos, imágenes, etc.
   matcher: ['/((?!api|_next/static|_next/image|favicon.ico|logo.png).*)'],
 };
