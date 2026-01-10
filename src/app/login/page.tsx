@@ -67,17 +67,17 @@ export default function LoginPage() {
       <Card className="w-full max-w-sm shadow-2xl">
         <CardHeader className="text-center">
           <CardTitle className="text-2xl">Acceso al Panel</CardTitle>
-          <CardDescription>Ingresa tu clave de 6 dígitos para continuar</CardDescription>
+          <CardDescription>Ingresa tu clave de acceso para continuar</CardDescription>
         </CardHeader>
         <CardContent>
           <form action={formAction} className="space-y-6">
             <div className="space-y-2">
-              <Label htmlFor="pin" className="sr-only">
-                PIN de 6 dígitos
+              <Label htmlFor="accessKey" className="sr-only">
+                Clave de Acceso
               </Label>
               <Input
-                id="pin"
-                name="pin"
+                id="accessKey"
+                name="accessKey"
                 type="password"
                 required
                 maxLength={6}
