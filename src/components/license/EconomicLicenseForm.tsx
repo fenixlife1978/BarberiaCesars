@@ -60,7 +60,7 @@ export default function EconomicLicenseForm() {
     },
   });
   
-  const { control, handleSubmit, setValue } = form;
+  const { control, setValue } = form;
 
   const { fields, append, remove } = useFieldArray({
     control,
