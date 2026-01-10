@@ -18,6 +18,7 @@ import { es } from 'date-fns/locale';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '../ui/dialog';
 import Image from 'next/image';
 import { Badge } from '../ui/badge';
+import { ScrollArea } from '../ui/scroll-area';
 
 type TaxRecordsTableProps = {
   initialRecords: TaxRecord[];
@@ -112,10 +113,11 @@ export default function TaxRecordsTable({ initialRecords }: TaxRecordsTableProps
                             <Eye className="h-4 w-4" />
                           </Button>
                         </DialogTrigger>
-                        <DialogContent>
+                        <DialogContent className="max-w-3xl">
                           <DialogHeader>
                             <DialogTitle>Detalles del Pago</DialogTitle>
                           </DialogHeader>
+                          <ScrollArea className="max-h-[70vh] p-4">
                            <div className="space-y-4">
                             <p><strong className="font-medium">Fecha:</strong> {formatDate(record.paymentDate)}</p>
                             <p><strong className="font-medium">Descripción:</strong> {record.description}</p>
@@ -129,15 +131,20 @@ export default function TaxRecordsTable({ initialRecords }: TaxRecordsTableProps
                                 {record.settledMonths?.map(m => <Badge key={m} variant="outline">{m}</Badge>)}
                                 </div>
                             </div>
-                            {record.document && (
+                            {record.documents && record.documents.length > 0 && (
                               <div>
-                                <strong className="font-medium">Comprobante:</strong>
-                                <div className="mt-2 flex items-center justify-center">
-                                  <Image src={record.document} alt="Comprobante" width={400} height={400} className="object-contain rounded-md" />
+                                <strong className="font-medium">Comprobantes:</strong>
+                                <div className="mt-2 grid grid-cols-2 md:grid-cols-3 gap-4">
+                                  {record.documents.map((doc, index) => (
+                                      <div key={index} className="relative">
+                                          <Image src={doc} alt={`Comprobante ${index + 1}`} width={200} height={200} className="object-contain rounded-md border" />
+                                      </div>
+                                  ))}
                                 </div>
                               </div>
                             )}
                           </div>
+                          </ScrollArea>
                         </DialogContent>
                       </Dialog>
                   </TableCell>

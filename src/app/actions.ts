@@ -23,6 +23,8 @@ export async function getTaxRecords(): Promise<TaxRecord[]> {
 
 export async function addTaxRecord(prevState: any, formData: FormData) {
   const settledMonths = formData.getAll('settledMonths') as string[];
+  const documents = formData.getAll('documents').map(d => d.toString());
+  
   const rawFormData = {
     paymentDate: formData.get('paymentDate'),
     description: formData.get('description'),
@@ -31,7 +33,7 @@ export async function addTaxRecord(prevState: any, formData: FormData) {
     bcvRate: formData.get('bcvRate'),
     amountEuros: formData.get('amountEuros'),
     settledMonths: settledMonths,
-    document: formData.get('document') || undefined,
+    documents: documents.length > 0 ? documents : undefined,
   };
 
   const validatedFields = taxRecordSchema.safeParse(rawFormData);
@@ -84,7 +86,14 @@ export async function getEconomicLicenses(): Promise<EconomicLicense[]> {
 export async function addEconomicLicense(prevState: any, formData: FormData) {
   const rawData = Object.fromEntries(formData.entries());
   const authorizedActivities = JSON.parse(rawData.authorizedActivities as string);
-  const dataToValidate = { ...rawData, authorizedActivities, capital: Number(rawData.capital) };
+  const documents = formData.getAll('documents').map(d => d.toString());
+  
+  const dataToValidate = { 
+    ...rawData, 
+    authorizedActivities, 
+    capital: Number(rawData.capital),
+    documents: documents.length > 0 ? documents : undefined
+  };
 
   const validatedFields = economicLicenseSchema.safeParse(dataToValidate);
 

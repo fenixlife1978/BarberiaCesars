@@ -11,7 +11,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { useToast } from '@/hooks/use-toast';
 import { addTaxRecord } from '@/app/actions';
-import { UploadCloud, Loader2, ChevronLeft, ChevronRight } from 'lucide-react';
+import { UploadCloud, Loader2, ChevronLeft, ChevronRight, X } from 'lucide-react';
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '../ui/form';
 import { processImage } from '@/lib/image-utils';
 import { Checkbox } from '../ui/checkbox';
@@ -35,7 +35,7 @@ export default function TaxForm() {
   const [state, formAction, isPending] = useActionState(addTaxRecord, initialState);
   const { toast } = useToast();
   const formRef = useRef<HTMLFormElement>(null);
-  const [preview, setPreview] = useState<string | null>(null);
+  const [previews, setPreviews] = useState<string[]>([]);
 
   const currentYear = new Date().getFullYear();
   const [selectedYear, setSelectedYear] = useState(currentYear);
@@ -50,7 +50,7 @@ export default function TaxForm() {
       bcvRate: 0,
       amountEuros: 0,
       settledMonths: [],
-      document: '',
+      documents: [],
     },
   });
 
@@ -74,7 +74,7 @@ export default function TaxForm() {
         description: state.message,
       });
       form.reset();
-      setPreview(null);
+      setPreviews([]);
       formRef.current?.reset();
       setSelectedYear(currentYear);
     } else if (state.status === 'error' && state.message) {
@@ -87,35 +87,34 @@ export default function TaxForm() {
   }, [state, toast, form, currentYear]);
 
   const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (preview) {
-      URL.revokeObjectURL(preview);
-      setPreview(null);
-      setValue('document', '');
+    const files = e.target.files;
+    if (!files) return;
+
+    try {
+      const newPreviews = await Promise.all(Array.from(files).map(processImage));
+      const updatedPreviews = [...previews, ...newPreviews];
+      setPreviews(updatedPreviews);
+      setValue('documents', updatedPreviews);
+    } catch (error) {
+      console.error(error);
+      toast({
+        variant: 'destructive',
+        title: 'Error de imagen',
+        description: 'No se pudo procesar uno o más archivos. Por favor, intenta de nuevo.',
+      });
     }
-    if (file) {
-      try {
-        const compressedImage = await processImage(file);
-        setPreview(compressedImage);
-        setValue('document', compressedImage);
-      } catch (error) {
-        console.error(error);
-        toast({
-          variant: 'destructive',
-          title: 'Error de imagen',
-          description: 'No se pudo procesar el archivo. Por favor, intenta con otra imagen.',
-        });
-      }
-    }
+  };
+
+  const removePreview = (index: number) => {
+    const updatedPreviews = previews.filter((_, i) => i !== index);
+    setPreviews(updatedPreviews);
+    setValue('documents', updatedPreviews);
   };
   
   const customFormAction = (formData: FormData) => {
     const currentValues = form.getValues();
     
-    // Clear old formData values for settledMonths
     formData.delete('settledMonths');
-
-    // Append all selected months from the form's state
     currentValues.settledMonths.forEach(monthYear => {
         formData.append('settledMonths', monthYear);
     });
@@ -125,7 +124,11 @@ export default function TaxForm() {
     formData.set('amountEuros', String(currentValues.amountEuros));
     
     formData.delete('document-input');
-    formData.set('document', currentValues.document || '');
+    formData.delete('documents');
+
+    currentValues.documents?.forEach(doc => {
+      formData.append('documents', doc);
+    });
 
     formAction(formData);
   }
@@ -260,30 +263,44 @@ export default function TaxForm() {
 
        
         <div>
-          <Label htmlFor="document-input">Comprobante (JPG)</Label>
-          <div className="mt-2 flex justify-center rounded-lg border border-dashed border-border px-6 py-10">
+          <Label htmlFor="document-input">Comprobante(s)</Label>
+          <div className="mt-2 flex flex-col items-center justify-center rounded-lg border border-dashed border-border px-6 py-10">
             <div className="text-center">
-              {preview ? (
-                <Image src={preview} alt="Vista previa" width={128} height={128} className="mx-auto h-32 w-32 object-contain" />
-              ) : (
-                <UploadCloud className="mx-auto h-12 w-12 text-gray-400" aria-hidden="true" />
-              )}
+              <UploadCloud className="mx-auto h-12 w-12 text-gray-400" aria-hidden="true" />
               <div className="mt-4 flex text-sm leading-6 text-muted-foreground">
                 <Label
                   htmlFor="document-input"
                   className="relative cursor-pointer rounded-md font-semibold text-primary focus-within:outline-none focus-within:ring-2 focus-within:ring-ring focus-within:ring-offset-2 hover:text-primary/80"
                 >
-                  <span>Sube un archivo</span>
-                  <Input id="document-input" name="document-input" type="file" className="sr-only" accept="image/jpeg,image/png" onChange={handleFileChange} />
+                  <span>Sube uno o más archivos</span>
+                  <Input id="document-input" name="document-input" type="file" className="sr-only" accept="image/jpeg,image/png" multiple onChange={handleFileChange} />
                 </Label>
-                <p className="pl-1">o arrástralo aquí</p>
+                <p className="pl-1">o arrástralos aquí</p>
               </div>
               <p className="text-xs leading-5 text-muted-foreground">Imágenes de hasta 10MB</p>
             </div>
+             {previews.length > 0 && (
+              <div className="mt-4 grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
+                {previews.map((src, index) => (
+                  <div key={index} className="relative group">
+                    <Image src={src} alt={`Vista previa ${index + 1}`} width={100} height={100} className="w-full h-auto object-contain rounded-md" />
+                    <Button
+                      type="button"
+                      variant="destructive"
+                      size="icon"
+                      className="absolute top-1 right-1 h-6 w-6 opacity-0 group-hover:opacity-100"
+                      onClick={() => removePreview(index)}
+                    >
+                      <X className="h-4 w-4" />
+                    </Button>
+                  </div>
+                ))}
+              </div>
+            )}
           </div>
           <FormField
             control={control}
-            name="document"
+            name="documents"
             render={({ field }) => (
               <FormItem className='hidden'>
                 <FormControl>

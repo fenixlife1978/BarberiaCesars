@@ -12,7 +12,7 @@ import {
 } from '@/components/ui/table';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
-import { ExternalLink, FilterX, Eye } from 'lucide-react';
+import { FilterX, Eye } from 'lucide-react';
 import { format } from 'date-fns';
 import { es } from 'date-fns/locale';
 import {
@@ -161,12 +161,18 @@ export default function EconomicLicensesTable({ initialLicenses }: EconomicLicen
                                 </Table>
                             </div>
 
-                            {license.document && (
+                            {license.documents && license.documents.length > 0 && (
                                 <>
                                 <hr />
                                 <div>
-                                    <h4 className="font-semibold text-primary mb-2">Documento Adjunto</h4>
-                                    <Image src={license.document} alt="Comprobante" width={200} height={200} className="object-contain rounded-md border" />
+                                    <h4 className="font-semibold text-primary mb-2">Documentos Adjuntos</h4>
+                                    <div className="mt-2 grid grid-cols-2 md:grid-cols-3 gap-4">
+                                      {license.documents.map((doc, index) => (
+                                          <div key={index} className="relative">
+                                            <Image src={doc} alt={`Documento ${index + 1}`} width={200} height={200} className="object-contain rounded-md border" />
+                                          </div>
+                                      ))}
+                                    </div>
                                 </div>
                                 </>
                             )}
