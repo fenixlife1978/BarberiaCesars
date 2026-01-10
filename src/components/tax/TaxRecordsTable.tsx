@@ -12,13 +12,14 @@ import {
 } from '@/components/ui/table';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
-import { Eye, FilterX } from 'lucide-react';
+import { Eye, FilterX, Pencil } from 'lucide-react';
 import { format } from 'date-fns';
 import { es } from 'date-fns/locale';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '../ui/dialog';
 import Image from 'next/image';
 import { Badge } from '../ui/badge';
 import { ScrollArea } from '../ui/scroll-area';
+import TaxForm from './TaxForm';
 
 type TaxRecordsTableProps = {
   initialRecords: TaxRecord[];
@@ -27,6 +28,7 @@ type TaxRecordsTableProps = {
 export default function TaxRecordsTable({ initialRecords }: TaxRecordsTableProps) {
   const [dateFilter, setDateFilter] = useState('');
   const [descriptionFilter, setDescriptionFilter] = useState('');
+  const [editingRecord, setEditingRecord] = useState<TaxRecord | null>(null);
 
   const filteredRecords = useMemo(() => {
     return initialRecords.filter((record) => {
@@ -58,6 +60,10 @@ export default function TaxRecordsTable({ initialRecords }: TaxRecordsTableProps
       return "Fecha inválida";
     }
   }
+
+  const handleEditSuccess = () => {
+    setEditingRecord(null);
+  };
 
   return (
     <div className="space-y-4">
@@ -147,6 +153,10 @@ export default function TaxRecordsTable({ initialRecords }: TaxRecordsTableProps
                           </ScrollArea>
                         </DialogContent>
                       </Dialog>
+
+                      <Button variant="ghost" size="icon" aria-label="Editar registro" onClick={() => setEditingRecord(record)}>
+                        <Pencil className="h-4 w-4" />
+                      </Button>
                   </TableCell>
                 </TableRow>
               ))
@@ -160,6 +170,19 @@ export default function TaxRecordsTable({ initialRecords }: TaxRecordsTableProps
           </TableBody>
         </Table>
       </div>
+
+       {editingRecord && (
+        <Dialog open={!!editingRecord} onOpenChange={(open) => !open && setEditingRecord(null)}>
+          <DialogContent className="max-w-3xl">
+            <DialogHeader>
+              <DialogTitle>Editar Pago de Impuesto</DialogTitle>
+            </DialogHeader>
+             <ScrollArea className="max-h-[70vh] p-4">
+              <TaxForm isEditMode initialData={editingRecord} onSuccess={handleEditSuccess} />
+            </ScrollArea>
+          </DialogContent>
+        </Dialog>
+      )}
     </div>
   );
 }

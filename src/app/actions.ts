@@ -2,8 +2,8 @@
 
 import { revalidatePath } from 'next/cache';
 import { db } from '@/lib/firebase';
-import { addDoc, collection, getDocs, orderBy, query, serverTimestamp } from 'firebase/firestore';
-import { taxRecordSchema, type TaxRecord, economicLicenseSchema, type EconomicLicense } from '@/types';
+import { addDoc, collection, getDocs, orderBy, query, serverTimestamp, doc, updateDoc } from 'firebase/firestore';
+import { taxRecordSchema, type TaxRecord, economicLicenseSchema, type EconomicLicense, taxRecordWithIdSchema } from '@/types';
 
 export async function getTaxRecords(): Promise<TaxRecord[]> {
   try {
@@ -66,6 +66,53 @@ export async function addTaxRecord(prevState: any, formData: FormData) {
     return { message: 'Error al agregar el registro.', status: 'error' };
   }
 }
+
+export async function updateTaxRecord(prevState: any, formData: FormData) {
+  const settledMonths = formData.getAll('settledMonths') as string[];
+  const documents = formData.getAll('documents').map(d => d.toString());
+  
+  const rawFormData = {
+    id: formData.get('id'),
+    paymentDate: formData.get('paymentDate'),
+    description: formData.get('description'),
+    receiptNumber: formData.get('receiptNumber'),
+    amountBolivares: formData.get('amountBolivares'),
+    bcvRate: formData.get('bcvRate'),
+    amountEuros: formData.get('amountEuros'),
+    settledMonths: settledMonths,
+    documents: documents.length > 0 ? documents : [],
+  };
+
+  const validatedFields = taxRecordWithIdSchema.safeParse(rawFormData);
+  
+  if (!validatedFields.success) {
+    return {
+      errors: validatedFields.error.flatten().fieldErrors,
+      message: 'Faltan campos. No se pudo actualizar el registro.',
+      status: 'error',
+    };
+  }
+  
+  const { id, amountBolivares, bcvRate, ...rest } = validatedFields.data;
+  const calculatedAmountEuros = parseFloat((amountBolivares / bcvRate).toFixed(2));
+  
+  try {
+    const recordRef = doc(db, 'taxRecords', id);
+    await updateDoc(recordRef, {
+      ...rest,
+      amountBolivares,
+      bcvRate,
+      amountEuros: calculatedAmountEuros,
+    });
+
+    revalidatePath('/');
+    return { message: 'Registro de impuesto actualizado con éxito.', status: 'success' };
+  } catch (error) {
+    console.error("Error updating document: ", error);
+    return { message: 'Error al actualizar el registro.', status: 'error' };
+  }
+}
+
 
 export async function getEconomicLicenses(): Promise<EconomicLicense[]> {
   try {

@@ -5,12 +5,12 @@ import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import Image from 'next/image';
 
-import { taxRecordSchema, type TaxRecordFormValues, months } from '@/types';
+import { taxRecordSchema, taxRecordWithIdSchema, type TaxRecord, type TaxRecordFormValues, months } from '@/types';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { useToast } from '@/hooks/use-toast';
-import { addTaxRecord } from '@/app/actions';
+import { addTaxRecord, updateTaxRecord } from '@/app/actions';
 import { UploadCloud, Loader2, ChevronLeft, ChevronRight, X } from 'lucide-react';
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '../ui/form';
 import { processImage } from '@/lib/image-utils';
@@ -22,27 +22,40 @@ const initialState = {
   status: '',
 };
 
-function SubmitButton({ isPending }: { isPending: boolean }) {
+function SubmitButton({ isPending, isEditMode }: { isPending: boolean, isEditMode: boolean }) {
   return (
     <Button type="submit" disabled={isPending} className="w-full bg-accent text-accent-foreground hover:bg-accent/90">
       {isPending ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
-      {isPending ? 'Guardando...' : 'Guardar Pago'}
+      {isPending ? (isEditMode ? 'Actualizando...' : 'Guardando...') : (isEditMode ? 'Actualizar Pago' : 'Guardar Pago')}
     </Button>
   );
 }
 
-export default function TaxForm() {
-  const [state, formAction, isPending] = useActionState(addTaxRecord, initialState);
+type TaxFormProps = {
+  isEditMode?: boolean;
+  initialData?: TaxRecord;
+  onSuccess?: () => void;
+};
+
+export default function TaxForm({ isEditMode = false, initialData, onSuccess }: TaxFormProps) {
+  const formAction = isEditMode ? updateTaxRecord : addTaxRecord;
+  const [state, action, isPending] = useActionState(formAction, initialState);
+  
   const { toast } = useToast();
   const formRef = useRef<HTMLFormElement>(null);
-  const [previews, setPreviews] = useState<string[]>([]);
+  const [previews, setPreviews] = useState<string[]>(initialData?.documents || []);
 
   const currentYear = new Date().getFullYear();
-  const [selectedYear, setSelectedYear] = useState(currentYear);
+  const [selectedYear, setSelectedYear] = useState(
+    initialData?.settledMonths?.[0] ? parseInt(initialData.settledMonths[0].split('-')[1]) : currentYear
+  );
 
   const form = useForm<TaxRecordFormValues>({
-    resolver: zodResolver(taxRecordSchema),
-    defaultValues: {
+    resolver: zodResolver(isEditMode ? taxRecordWithIdSchema : taxRecordSchema),
+    defaultValues: isEditMode && initialData ? {
+      ...initialData,
+      documents: initialData.documents || [],
+    } : {
       paymentDate: new Date().toISOString().split('T')[0],
       description: '',
       receiptNumber: '',
@@ -62,10 +75,10 @@ export default function TaxForm() {
     if (amountBolivares > 0 && bcvRate > 0) {
       const amountEuros = amountBolivares / bcvRate;
       setValue('amountEuros', parseFloat(amountEuros.toFixed(2)));
-    } else {
+    } else if (!isEditMode) {
       setValue('amountEuros', 0);
     }
-  }, [amountBolivares, bcvRate, setValue]);
+  }, [amountBolivares, bcvRate, setValue, isEditMode]);
 
   useEffect(() => {
     if (state.status === 'success') {
@@ -73,10 +86,15 @@ export default function TaxForm() {
         title: 'Éxito',
         description: state.message,
       });
-      form.reset();
-      setPreviews([]);
-      formRef.current?.reset();
-      setSelectedYear(currentYear);
+      if (!isEditMode) {
+        form.reset();
+        setPreviews([]);
+        formRef.current?.reset();
+        setSelectedYear(currentYear);
+      }
+      if (onSuccess) {
+        onSuccess();
+      }
     } else if (state.status === 'error' && state.message) {
       toast({
         variant: 'destructive',
@@ -84,7 +102,7 @@ export default function TaxForm() {
         description: state.message,
       });
     }
-  }, [state, toast, form, currentYear]);
+  }, [state, toast, form, currentYear, isEditMode, onSuccess]);
 
   const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = e.target.files;
@@ -94,7 +112,7 @@ export default function TaxForm() {
       const newPreviews = await Promise.all(Array.from(files).map(processImage));
       const updatedPreviews = [...previews, ...newPreviews];
       setPreviews(updatedPreviews);
-      setValue('documents', updatedPreviews);
+      setValue('documents', updatedPreviews, { shouldValidate: true });
     } catch (error) {
       console.error(error);
       toast({
@@ -108,7 +126,7 @@ export default function TaxForm() {
   const removePreview = (index: number) => {
     const updatedPreviews = previews.filter((_, i) => i !== index);
     setPreviews(updatedPreviews);
-    setValue('documents', updatedPreviews);
+    setValue('documents', updatedPreviews, { shouldValidate: true });
   };
   
   const customFormAction = (formData: FormData) => {
@@ -130,7 +148,11 @@ export default function TaxForm() {
       formData.append('documents', doc);
     });
 
-    formAction(formData);
+    if (isEditMode && initialData) {
+      formData.set('id', initialData.id);
+    }
+    
+    action(formData);
   }
 
   return (
@@ -304,14 +326,15 @@ export default function TaxForm() {
             render={({ field }) => (
               <FormItem className='hidden'>
                 <FormControl>
-                  <Input type="hidden" {...field} />
+                  {/* This input is just to make react-hook-form happy */}
+                  <Input type="hidden" {...field} value={field.value?.join(',') || ''} />
                 </FormControl>
                  <FormMessage />
               </FormItem>
             )}
           />
         </div>
-        <SubmitButton isPending={isPending} />
+        <SubmitButton isPending={isPending} isEditMode={isEditMode} />
       </form>
     </Form>
   );

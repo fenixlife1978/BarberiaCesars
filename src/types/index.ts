@@ -16,7 +16,13 @@ export const taxRecordSchema = z.object({
   documents: z.array(z.string()).optional(),
 });
 
+export const taxRecordWithIdSchema = taxRecordSchema.extend({
+  id: z.string().min(1),
+});
+
 export type TaxRecordFormValues = z.infer<typeof taxRecordSchema>;
+export type TaxRecordWithIdFormValues = z.infer<typeof taxRecordWithIdSchema>;
+
 
 export type TaxRecord = {
   id: string;
@@ -69,7 +75,6 @@ export type AuthorizedActivityFormValues = z.infer<typeof authorizedActivitySche
 
 export type EconomicLicense = EconomicLicenseFormValues & {
   id: string;
-  documents?: string[];
   createdAt: {
     seconds: number;
     nanoseconds: number;
