@@ -1,7 +1,7 @@
 'use client';
 
-import { useEffect, useRef, useState, useActionState } from 'react';
-import { useForm, useFieldArray } from 'react-hook-form';
+import { useEffect, useRef, useState } from 'react';
+import { useForm, useFieldArray, useActionState } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import Image from 'next/image';
 
@@ -108,17 +108,23 @@ export default function EconomicLicenseForm() {
     }
   };
 
-
   const customFormAction = (formData: FormData) => {
     const currentValues = form.getValues();
-    formData.set('authorizedActivities', JSON.stringify(currentValues.authorizedActivities));
-    
-    // We handle the file via state (base64), so we remove it from form data
-    // to avoid sending a file object.
-    formData.delete('document-input');
-    formData.set('document', currentValues.document || '');
+    const dataWithActivities = {
+      ...Object.fromEntries(formData.entries()),
+      authorizedActivities: currentValues.authorizedActivities
+    };
+    const newFormData = new FormData();
+    for (const key in dataWithActivities) {
+        if(key === 'authorizedActivities') {
+            newFormData.append(key, JSON.stringify(dataWithActivities[key]));
+        } else if (key !== 'document-input') {
+            newFormData.append(key, (dataWithActivities as any)[key]);
+        }
+    }
+    newFormData.set('document', currentValues.document || '');
 
-    formAction(formData);
+    formAction(newFormData);
   }
 
   return (
