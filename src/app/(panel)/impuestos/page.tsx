@@ -1,13 +1,29 @@
-
+'use client';
 import TaxForm from "@/components/tax/TaxForm";
-import { getTaxRecords } from "@/app/actions";
+import { useCollection } from "@/firebase/firestore/use-collection";
 import TaxRecordsTable from "@/components/tax/TaxRecordsTable";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import TaxChart from "@/components/tax/TaxChart";
+import { useAuth } from "@/firebase/provider";
+import { useMemo } from "react";
+import { collection, query, orderBy } from "firebase/firestore";
+import { initializeFirebase } from "@/firebase";
 
-export default async function ImpuestosPage() {
-  const rawRecords = await getTaxRecords();
-  const initialRecords = JSON.parse(JSON.stringify(rawRecords));
+export default function ImpuestosPage() {
+  const user = useAuth();
+  const { firestore } = initializeFirebase();
+
+  const recordsRef = useMemo(() => {
+    if (!user) return null;
+    return collection(firestore, `users/${user.uid}/taxRecords`);
+  }, [user, firestore]);
+  
+  const recordsQuery = useMemo(() => {
+    if (!recordsRef) return null;
+    return query(recordsRef, orderBy('createdAt', 'desc'));
+  }, [recordsRef]);
+
+  const { data: initialRecords, isLoading } = useCollection(recordsQuery);
 
   return (
     <div className="grid grid-cols-1 lg:grid-cols-5 gap-8 items-start">
@@ -28,7 +44,7 @@ export default async function ImpuestosPage() {
             <CardTitle className="text-2xl font-headline">Impuestos de los Últimos 6 Meses (€)</CardTitle>
            </CardHeader>
           <CardContent>
-            <TaxChart records={initialRecords} />
+            <TaxChart records={initialRecords || []} />
           </CardContent>
         </Card>
 
@@ -37,7 +53,7 @@ export default async function ImpuestosPage() {
             <CardTitle className="text-2xl font-headline">Historial de Pagos de Impuestos</CardTitle>
            </CardHeader>
           <CardContent>
-            <TaxRecordsTable initialRecords={initialRecords} />
+            <TaxRecordsTable initialRecords={initialRecords || []} isLoading={isLoading} />
           </CardContent>
         </Card>
       </div>

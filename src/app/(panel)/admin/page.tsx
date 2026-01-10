@@ -1,14 +1,21 @@
-
-import { getAuthenticatedUser } from "@/app/(auth)/get-authenticated-user";
+'use client';
+import { useUserRole } from "@/firebase/provider";
 import { redirect } from 'next/navigation';
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { useEffect } from "react";
 
-export default async function AdminPage() {
-  const user = await getAuthenticatedUser();
+export default function AdminPage() {
+  const userRole = useUserRole();
 
-  // Protect the route
-  if (!user || user.role !== 'admin') {
-    redirect('/impuestos');
+  useEffect(() => {
+     // Protect the route
+    if (userRole !== null && userRole !== 'admin') {
+      redirect('/impuestos');
+    }
+  }, [userRole]);
+ 
+  if (userRole !== 'admin') {
+    return null; // Or a loading spinner
   }
 
   return (

@@ -1,18 +1,24 @@
-
-import { getSettings } from "@/app/actions";
+'use client';
+import { useMemo } from 'react';
+import { doc } from 'firebase/firestore';
+import { useDoc } from '@/firebase/firestore/use-doc';
+import { initializeFirebase } from '@/firebase';
+import { useAuth } from '@/firebase/provider';
 import SettingsForm from "@/components/settings/SettingsForm";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import BackButton from "@/components/BackButton";
-import { getAuthenticatedUser } from "@/app/(auth)/get-authenticated-user";
-import { redirect } from 'next/navigation';
+import { Skeleton } from '@/components/ui/skeleton';
 
-export default async function SettingsPage() {
-  const user = await getAuthenticatedUser();
-  if (!user) {
-    redirect('/login');
-  }
+export default function SettingsPage() {
+  const user = useAuth();
+  const { firestore } = initializeFirebase();
 
-  const settings = await getSettings(user.uid);
+  const settingsRef = useMemo(() => {
+    if (!user) return null;
+    return doc(firestore, `users/${user.uid}/settings/general`);
+  }, [user, firestore]);
+
+  const { data: settings, isLoading } = useDoc(settingsRef);
 
   return (
     <div className="flex flex-col items-center gap-6">
@@ -24,7 +30,14 @@ export default async function SettingsPage() {
           <CardTitle className="text-2xl font-headline">Ajustes Generales</CardTitle>
         </CardHeader>
         <CardContent>
-          <SettingsForm initialSettings={settings} />
+          {isLoading ? (
+            <div className="space-y-4">
+              <Skeleton className="h-32 w-32 rounded-full mx-auto" />
+              <Skeleton className="h-10 w-full" />
+            </div>
+          ) : (
+            <SettingsForm initialSettings={settings} />
+          )}
         </CardContent>
       </Card>
     </div>

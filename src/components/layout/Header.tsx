@@ -1,38 +1,55 @@
 
+'use client';
 import Image from 'next/image';
 import Link from 'next/link';
+import { useRouter } from 'next/navigation';
 import { Button } from '../ui/button';
 import { Sheet, SheetContent, SheetTrigger, SheetTitle, SheetDescription } from '../ui/sheet';
 import { Menu, Settings, Home, FileText, BarChart2, LogOut, ShieldCheck } from 'lucide-react';
-import { getSettings } from '@/app/actions';
-import { type AuthenticatedUser } from '@/app/(auth)/get-authenticated-user';
-import { logout } from '@/app/(auth)/actions';
+import { useAuth, useUserRole } from '@/firebase/provider';
+import { getAuth, signOut } from 'firebase/auth';
+import { initializeFirebase } from '@/firebase';
+import { useDoc } from '@/firebase/firestore/use-doc';
+import { useMemo } from 'react';
+import { doc } from 'firebase/firestore';
 
-type HeaderProps = {
-  user: AuthenticatedUser | null;
-};
 
-async function LogoutButton() {
+function LogoutButton() {
+  const router = useRouter();
+  const handleLogout = async () => {
+    const { auth } = initializeFirebase();
+    await signOut(auth);
+    router.push('/login');
+  };
+
   return (
-    <form action={logout}>
-      <Button type="submit" variant="ghost" className="w-full justify-start">
+      <Button onClick={handleLogout} variant="ghost" className="w-full justify-start">
         <LogOut className="mr-2"/> Cerrar Sesión
       </Button>
-    </form>
   )
 }
 
-export default async function Header({ user }: HeaderProps) {
-  const settings = user ? await getSettings(user.uid) : null;
+export default function Header() {
+  const user = useAuth();
+  const userRole = useUserRole();
+  const { firestore } = initializeFirebase();
+  
+  const settingsRef = useMemo(() => {
+    if (!user) return null;
+    return doc(firestore, `users/${user.uid}/settings/general`);
+  }, [user, firestore]);
+
+  const { data: settings } = useDoc(settingsRef);
+
   const logoUrl = settings?.logoUrl || '/logo.png';
-  const isAdmin = user?.role === 'admin';
+  const isAdmin = userRole === 'admin';
 
   return (
     <header className="bg-primary text-primary-foreground shadow-md sticky top-0 z-40">
       <div className="container mx-auto flex items-center justify-between h-20 px-4 md:px-8">
         <Link href="/impuestos" className="flex items-center gap-3">
           <div className="relative w-[50px] h-[50px]">
-            <Image src={logoUrl} alt="FiscalFlow Logo" fill sizes="50px" className="rounded-full object-cover" />
+            {logoUrl && <Image src={logoUrl} alt="FiscalFlow Logo" fill sizes="50px" className="rounded-full object-cover" />}
           </div>
           <h1 className="text-2xl md:text-3xl font-bold font-headline tracking-tight hidden sm:block">
             FiscalFlow
@@ -61,11 +78,7 @@ export default async function Header({ user }: HeaderProps) {
               Ajustes
             </Link>
           </Button>
-           <form action={logout}>
-             <Button variant="ghost" type="submit">
-                <LogOut className="mr-2"/> Cerrar Sesión
-            </Button>
-          </form>
+          <LogoutButton />
         </nav>
 
         {/* Mobile Navigation */}

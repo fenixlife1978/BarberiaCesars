@@ -13,7 +13,7 @@ import {
 } from '@/components/ui/table';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
-import { FilterX, Eye, Trash2, FileDown } from 'lucide-react';
+import { FilterX, Eye, Trash2, FileDown, Loader2 } from 'lucide-react';
 import { format } from 'date-fns';
 import { es } from 'date-fns/locale';
 import {
@@ -37,13 +37,16 @@ import {
 import { ScrollArea } from '../ui/scroll-area';
 import Image from 'next/image';
 import { useToast } from '@/hooks/use-toast';
-import { deleteEconomicLicense } from '@/app/actions';
+import { useAuth } from '@/firebase/provider';
+import { initializeFirebase } from '@/firebase';
+import { doc, deleteDoc } from 'firebase/firestore';
 import { jsPDF } from 'jspdf';
 import 'jspdf-autotable';
 
 
 type EconomicLicensesTableProps = {
   initialLicenses: EconomicLicense[];
+  isLoading: boolean;
 };
 
 declare module 'jspdf' {
@@ -52,13 +55,13 @@ declare module 'jspdf' {
   }
 }
 
-export default function EconomicLicensesTable({ initialLicenses }: EconomicLicensesTableProps) {
+export default function EconomicLicensesTable({ initialLicenses, isLoading }: EconomicLicensesTableProps) {
   const [filter, setFilter] = useState('');
-  const [licenses, setLicenses] = useState(initialLicenses);
   const { toast } = useToast();
+  const user = useAuth();
 
   const filteredLicenses = useMemo(() => {
-    const updatedLicenses = licenses.filter((license) => {
+    return (initialLicenses || []).filter((license) => {
       const searchTerm = filter.toLowerCase();
       return (
         license.taxpayerName?.toLowerCase().includes(searchTerm) ||
@@ -66,22 +69,23 @@ export default function EconomicLicensesTable({ initialLicenses }: EconomicLicen
         license.licenseNumber?.toLowerCase().includes(searchTerm)
       );
     });
-    return updatedLicenses;
-  }, [licenses, filter]);
+  }, [initialLicenses, filter]);
 
   const handleDelete = async (id: string) => {
-    const result = await deleteEconomicLicense(id);
-    if (result.status === 'success') {
-        setLicenses(licenses.filter(l => l.id !== id));
+    if (!user) return;
+    const { firestore } = initializeFirebase();
+    const licenseRef = doc(firestore, `users/${user.uid}/economicLicenses`, id);
+    try {
+        await deleteDoc(licenseRef);
         toast({
             title: 'Éxito',
-            description: result.message,
+            description: 'Licencia eliminada con éxito.',
         });
-    } else {
+    } catch (error) {
         toast({
             variant: 'destructive',
             title: 'Error',
-            description: result.message,
+            description: 'No se pudo eliminar la licencia.',
         });
     }
   };
@@ -192,7 +196,13 @@ export default function EconomicLicensesTable({ initialLicenses }: EconomicLicen
             </TableRow>
           </TableHeader>
           <TableBody>
-            {filteredLicenses.length > 0 ? (
+             {isLoading ? (
+                <TableRow>
+                    <TableCell colSpan={5} className="h-24 text-center">
+                       <Loader2 className="h-8 w-8 animate-spin mx-auto text-primary" />
+                    </TableCell>
+                </TableRow>
+            ) : filteredLicenses.length > 0 ? (
               filteredLicenses.map((license) => (
                 <TableRow key={license.id}>
                   <TableCell className="font-medium">{license.licenseNumber}</TableCell>

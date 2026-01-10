@@ -13,7 +13,7 @@ import {
 } from '@/components/ui/table';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
-import { Eye, FilterX, Pencil, Trash2, FileDown } from 'lucide-react';
+import { Eye, FilterX, Pencil, Trash2, FileDown, Loader2 } from 'lucide-react';
 import { format } from 'date-fns';
 import { es } from 'date-fns/locale';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '../ui/dialog';
@@ -32,14 +32,17 @@ import Image from 'next/image';
 import { Badge } from '../ui/badge';
 import { ScrollArea } from '../ui/scroll-area';
 import TaxForm from './TaxForm';
-import { deleteTaxRecord } from '@/app/actions';
 import { useToast } from '@/hooks/use-toast';
 import { jsPDF } from "jspdf";
 import 'jspdf-autotable';
+import { useAuth } from '@/firebase/provider';
+import { initializeFirebase } from '@/firebase';
+import { doc, deleteDoc } from 'firebase/firestore';
 
 
 type TaxRecordsTableProps = {
   initialRecords: TaxRecord[];
+  isLoading: boolean;
 };
 
 declare module 'jspdf' {
@@ -48,15 +51,15 @@ declare module 'jspdf' {
   }
 }
 
-export default function TaxRecordsTable({ initialRecords }: TaxRecordsTableProps) {
+export default function TaxRecordsTable({ initialRecords, isLoading }: TaxRecordsTableProps) {
   const [dateFilter, setDateFilter] = useState('');
   const [descriptionFilter, setDescriptionFilter] = useState('');
   const [editingRecord, setEditingRecord] = useState<TaxRecord | null>(null);
-  const [records, setRecords] = useState(initialRecords);
   const { toast } = useToast();
+  const user = useAuth();
 
   const filteredRecords = useMemo(() => {
-    return records.filter((record) => {
+    return (initialRecords || []).filter((record) => {
       const paymentDate = record.paymentDate || '';
       const description = record.description?.toLowerCase() || '';
 
@@ -67,21 +70,24 @@ export default function TaxRecordsTable({ initialRecords }: TaxRecordsTableProps
       
       return dateMatch && descriptionMatch;
     });
-  }, [records, dateFilter, descriptionFilter]);
+  }, [initialRecords, dateFilter, descriptionFilter]);
   
   const handleDelete = async (id: string) => {
-    const result = await deleteTaxRecord(id);
-    if (result.status === 'success') {
-        setRecords(records.filter(r => r.id !== id));
+    if (!user) return;
+    const { firestore } = initializeFirebase();
+    const recordRef = doc(firestore, `users/${user.uid}/taxRecords`, id);
+
+    try {
+        await deleteDoc(recordRef);
         toast({
             title: 'Éxito',
-            description: result.message,
+            description: 'Registro eliminado con éxito.',
         });
-    } else {
-        toast({
+    } catch (error) {
+         toast({
             variant: 'destructive',
             title: 'Error',
-            description: result.message,
+            description: 'No se pudo eliminar el registro.',
         });
     }
   };
@@ -106,7 +112,6 @@ export default function TaxRecordsTable({ initialRecords }: TaxRecordsTableProps
 
   const handleEditSuccess = () => {
     setEditingRecord(null);
-    // No need to manually refetch, revalidatePath in server action handles it
   };
 
   const exportToPDF = (record: TaxRecord) => {
@@ -166,7 +171,13 @@ export default function TaxRecordsTable({ initialRecords }: TaxRecordsTableProps
             </TableRow>
           </TableHeader>
           <TableBody>
-            {filteredRecords.length > 0 ? (
+            {isLoading ? (
+                <TableRow>
+                    <TableCell colSpan={5} className="h-24 text-center">
+                       <Loader2 className="h-8 w-8 animate-spin mx-auto text-primary" />
+                    </TableCell>
+                </TableRow>
+            ) : filteredRecords.length > 0 ? (
               filteredRecords.map((record) => (
                 <TableRow key={record.id}>
                   <TableCell className="font-medium whitespace-nowrap">

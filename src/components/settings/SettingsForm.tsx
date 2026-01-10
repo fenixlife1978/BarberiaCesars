@@ -1,10 +1,9 @@
 
 'use client';
 
-import { useActionState, useEffect, useRef, useState } from 'react';
+import { useRef, useState, useTransition } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
-import { updateSettings } from '@/app/actions';
 import { settingsSchema, type Settings, type SettingsFormValues } from '@/types';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -14,12 +13,9 @@ import { useToast } from '@/hooks/use-toast';
 import { Loader2, UploadCloud, X } from 'lucide-react';
 import Image from 'next/image';
 import { processImage } from '@/lib/image-utils';
-
-const initialState = {
-  message: '',
-  errors: {},
-  status: '',
-};
+import { useAuth } from '@/firebase/provider';
+import { doc, setDoc } from 'firebase/firestore';
+import { initializeFirebase } from '@/firebase';
 
 function SubmitButton({ isPending }: { isPending: boolean }) {
   return (
@@ -35,10 +31,11 @@ type SettingsFormProps = {
 };
 
 export default function SettingsForm({ initialSettings }: SettingsFormProps) {
-  const [state, formAction, isPending] = useActionState(updateSettings, initialState);
+  const [isPending, startTransition] = useTransition();
   const { toast } = useToast();
   const formRef = useRef<HTMLFormElement>(null);
   const [logoPreview, setLogoPreview] = useState<string | null>(initialSettings?.logoUrl || null);
+  const user = useAuth();
 
   const form = useForm<SettingsFormValues>({
     resolver: zodResolver(settingsSchema),
@@ -47,29 +44,7 @@ export default function SettingsForm({ initialSettings }: SettingsFormProps) {
     },
   });
 
-  const { setValue, watch } = form;
-  const currentLogoUrl = watch('logoUrl');
-
-  useEffect(() => {
-    if (state.status === 'success') {
-      toast({
-        title: 'Éxito',
-        description: state.message,
-      });
-       if(currentLogoUrl){
-        setLogoPreview(currentLogoUrl);
-      }
-      form.reset({
-        logoUrl: currentLogoUrl,
-      });
-    } else if (state.status === 'error') {
-      toast({
-        variant: 'destructive',
-        title: 'Error',
-        description: state.message || 'No se pudieron guardar los ajustes.',
-      });
-    }
-  }, [state, toast, form, currentLogoUrl]);
+  const { setValue, handleSubmit } = form;
   
   const handleLogoChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -94,15 +69,28 @@ export default function SettingsForm({ initialSettings }: SettingsFormProps) {
     setValue('logoUrl', '', { shouldValidate: true });
   }
 
-  const customAction = (formData: FormData) => {
-    const values = form.getValues();
-    formData.set('logoUrl', values.logoUrl || ''); // Asegurarse que es un string
-    formAction(formData);
+  const onSubmit = (values: SettingsFormValues) => {
+    if (!user) {
+        toast({variant: 'destructive', title: 'Error', description: 'Debes iniciar sesión.'});
+        return;
+    }
+    const { firestore } = initializeFirebase();
+    startTransition(async () => {
+        try {
+            const settingsRef = doc(firestore, `users/${user.uid}/settings/general`);
+            await setDoc(settingsRef, {
+                logoUrl: values.logoUrl || ""
+            }, { merge: true });
+            toast({ title: 'Éxito', description: 'Ajustes guardados con éxito.'});
+        } catch (error) {
+            toast({ variant: 'destructive', title: 'Error', description: 'Error al guardar los ajustes.'});
+        }
+    });
   }
 
   return (
     <Form {...form}>
-      <form ref={formRef} action={customAction} className="space-y-8">
+      <form ref={formRef} onSubmit={handleSubmit(onSubmit)} className="space-y-8">
         <div>
           <Label>Logo de la Empresa</Label>
           <div className="mt-2 flex flex-col items-center justify-center rounded-lg border border-dashed border-border px-6 py-10">

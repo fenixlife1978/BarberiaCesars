@@ -3,7 +3,7 @@ import './globals.css';
 import { Toaster } from '@/components/ui/toaster';
 import { FirebaseProvider } from '@/firebase/provider';
 
-export const metadata: Metadata = {
+export const metadata = {
   title: 'FiscalFlow',
   description: 'Gestión fiscal simplificada.',
 };

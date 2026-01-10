@@ -1,13 +1,25 @@
 
-import { redirect } from 'next/navigation';
-import { getAuthenticatedUser } from './(auth)/get-authenticated-user';
+'use client';
+import { useRouter } from 'next/navigation';
+import { useEffect } from 'react';
+import { useAuth } from '@/firebase/provider';
+import { Loader2 } from 'lucide-react';
 
-export default async function HomePage() {
-  const user = await getAuthenticatedUser();
-  
-  if (user) {
-    redirect('/impuestos');
-  } else {
-    redirect('/login');
-  }
+export default function HomePage() {
+  const user = useAuth();
+  const router = useRouter();
+
+  useEffect(() => {
+    if (user) {
+      router.replace('/impuestos');
+    } else if (user === null) {
+      router.replace('/login');
+    }
+  }, [user, router]);
+
+  return (
+    <div className="flex h-screen items-center justify-center">
+      <Loader2 className="h-16 w-16 animate-spin text-primary" />
+    </div>
+  );
 }

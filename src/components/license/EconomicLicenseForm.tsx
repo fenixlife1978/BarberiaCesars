@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useRef, useState, useActionState } from 'react';
+import { useEffect, useRef, useState, useTransition } from 'react';
 import { useForm, useFieldArray } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import Image from 'next/image';
@@ -10,17 +10,13 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { useToast } from '@/hooks/use-toast';
-import { addEconomicLicense } from '@/app/actions';
 import { UploadCloud, Loader2, PlusCircle, X } from 'lucide-react';
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '../ui/form';
 import { Separator } from '../ui/separator';
 import { processImage } from '@/lib/image-utils';
-
-const initialState = {
-  message: '',
-  errors: {},
-  status: '',
-};
+import { useAuth } from '@/firebase/provider';
+import { addDoc, collection, serverTimestamp } from 'firebase/firestore';
+import { initializeFirebase } from '@/firebase';
 
 function SubmitButton({ isPending }: { isPending: boolean }) {
   return (
@@ -32,10 +28,11 @@ function SubmitButton({ isPending }: { isPending: boolean }) {
 }
 
 export default function EconomicLicenseForm() {
-  const [state, formAction, isPending] = useActionState(addEconomicLicense, initialState);
+  const [isPending, startTransition] = useTransition();
   const { toast } = useToast();
   const formRef = useRef<HTMLFormElement>(null);
   const [previews, setPreviews] = useState<string[]>([]);
+  const user = useAuth();
 
   const form = useForm<EconomicLicenseFormValues>({
     resolver: zodResolver(economicLicenseSchema),
@@ -60,30 +57,12 @@ export default function EconomicLicenseForm() {
     },
   });
   
-  const { control, setValue } = form;
+  const { control, setValue, handleSubmit } = form;
 
   const { fields, append, remove } = useFieldArray({
     control,
     name: "authorizedActivities",
   });
-
-  useEffect(() => {
-    if (state.status === 'success') {
-      toast({
-        title: 'Éxito',
-        description: state.message,
-      });
-      form.reset();
-      setPreviews([]);
-      formRef.current?.reset();
-    } else if (state.status === 'error' && state.message) {
-      toast({
-        variant: 'destructive',
-        title: 'Error',
-        description: state.message,
-      });
-    }
-  }, [state, toast, form]);
 
   const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = e.target.files;
@@ -110,25 +89,33 @@ export default function EconomicLicenseForm() {
     setValue('documents', updatedPreviews);
   };
 
-  const customFormAction = (formData: FormData) => {
-    const currentValues = form.getValues();
-    
-    formData.delete('authorizedActivities');
-    formData.append('authorizedActivities', JSON.stringify(currentValues.authorizedActivities));
-    
-    formData.delete('document-input');
-    formData.delete('documents');
-    
-    currentValues.documents?.forEach(doc => {
-        formData.append('documents', doc);
-    });
+  const onSubmit = (values: EconomicLicenseFormValues) => {
+    if (!user) {
+        toast({variant: 'destructive', title: 'Error', description: 'Debes iniciar sesión.'});
+        return;
+    }
+    const { firestore } = initializeFirebase();
 
-    formAction(formData);
-  }
+    startTransition(async () => {
+        try {
+            const licensesCollection = collection(firestore, `users/${user.uid}/economicLicenses`);
+            await addDoc(licensesCollection, {
+                ...values,
+                createdAt: serverTimestamp(),
+                userId: user.uid,
+            });
+            toast({title: 'Éxito', description: 'Licencia económica agregada con éxito.'});
+            form.reset();
+            setPreviews([]);
+        } catch (error) {
+            toast({variant: 'destructive', title: 'Error', description: 'Error al agregar la licencia.'});
+        }
+    });
+  };
 
   return (
     <Form {...form}>
-      <form ref={formRef} action={customFormAction} className="space-y-8">
+      <form ref={formRef} onSubmit={handleSubmit(onSubmit)} className="space-y-8">
         
         {/* Contribuyente */}
         <div className='space-y-4'>

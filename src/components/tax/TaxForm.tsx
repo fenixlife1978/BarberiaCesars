@@ -1,26 +1,28 @@
 'use client';
 
-import { useEffect, useRef, useState, useActionState } from 'react';
+import { useEffect, useRef, useState, useTransition } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import Image from 'next/image';
+import {
+  addDoc,
+  collection,
+  doc,
+  serverTimestamp,
+  updateDoc
+} from "firebase/firestore";
 
 import { taxRecordSchema, taxRecordWithIdSchema, type TaxRecord, type TaxRecordFormValues, months } from '@/types';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { useToast } from '@/hooks/use-toast';
-import { addTaxRecord, updateTaxRecord } from '@/app/actions';
 import { UploadCloud, Loader2, ChevronLeft, ChevronRight, X } from 'lucide-react';
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '../ui/form';
 import { processImage } from '@/lib/image-utils';
 import { Checkbox } from '../ui/checkbox';
-
-const initialState = {
-  message: '',
-  errors: {},
-  status: '',
-};
+import { useAuth } from '@/firebase/provider';
+import { initializeFirebase } from '@/firebase';
 
 function SubmitButton({ isPending, isEditMode }: { isPending: boolean, isEditMode: boolean }) {
   return (
@@ -38,12 +40,11 @@ type TaxFormProps = {
 };
 
 export default function TaxForm({ isEditMode = false, initialData, onSuccess }: TaxFormProps) {
-  const formAction = isEditMode ? updateTaxRecord : addTaxRecord;
-  const [state, action, isPending] = useActionState(formAction, initialState);
-  
+  const [isPending, startTransition] = useTransition();
   const { toast } = useToast();
   const formRef = useRef<HTMLFormElement>(null);
   const [previews, setPreviews] = useState<string[]>(initialData?.documents || []);
+  const user = useAuth();
 
   const currentYear = new Date().getFullYear();
   const [selectedYear, setSelectedYear] = useState(
@@ -67,7 +68,7 @@ export default function TaxForm({ isEditMode = false, initialData, onSuccess }: 
     },
   });
 
-  const { watch, setValue, control, register } = form;
+  const { watch, setValue, control, register, handleSubmit } = form;
   const amountBolivares = watch('amountBolivares');
   const bcvRate = watch('bcvRate');
 
@@ -80,29 +81,6 @@ export default function TaxForm({ isEditMode = false, initialData, onSuccess }: 
     }
   }, [amountBolivares, bcvRate, setValue, isEditMode]);
 
-  useEffect(() => {
-    if (state.status === 'success') {
-      toast({
-        title: 'Éxito',
-        description: state.message,
-      });
-      if (!isEditMode) {
-        form.reset();
-        setPreviews([]);
-        formRef.current?.reset();
-        setSelectedYear(currentYear);
-      }
-      if (onSuccess) {
-        onSuccess();
-      }
-    } else if (state.status === 'error' && state.message) {
-      toast({
-        variant: 'destructive',
-        title: 'Error',
-        description: state.message,
-      });
-    }
-  }, [state, toast, form, currentYear, isEditMode, onSuccess]);
 
   const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = e.target.files;
@@ -129,35 +107,42 @@ export default function TaxForm({ isEditMode = false, initialData, onSuccess }: 
     setValue('documents', updatedPreviews, { shouldValidate: true });
   };
   
-  const customFormAction = (formData: FormData) => {
-    const currentValues = form.getValues();
-    
-    formData.delete('settledMonths');
-    currentValues.settledMonths.forEach(monthYear => {
-        formData.append('settledMonths', monthYear);
-    });
-
-    formData.set('amountBolivares', String(currentValues.amountBolivares));
-    formData.set('bcvRate', String(currentValues.bcvRate));
-    formData.set('amountEuros', String(currentValues.amountEuros));
-    
-    formData.delete('document-input');
-    formData.delete('documents');
-
-    currentValues.documents?.forEach(doc => {
-      formData.append('documents', doc);
-    });
-
-    if (isEditMode && initialData) {
-      formData.set('id', initialData.id);
+  const onSubmit = (values: TaxRecordFormValues) => {
+    if (!user) {
+        toast({variant: 'destructive', title: 'Error', description: 'Debes iniciar sesión.'});
+        return;
     }
-    
-    action(formData);
-  }
+    const { firestore } = initializeFirebase();
+
+    startTransition(async () => {
+        try {
+            if (isEditMode && initialData?.id) {
+                 const recordRef = doc(firestore, `users/${user.uid}/taxRecords`, initialData.id);
+                 await updateDoc(recordRef, values);
+                 toast({title: 'Éxito', description: 'Registro actualizado con éxito.'});
+            } else {
+                const recordsCollection = collection(firestore, `users/${user.uid}/taxRecords`);
+                await addDoc(recordsCollection, {
+                    ...values,
+                    createdAt: serverTimestamp(),
+                    userId: user.uid,
+                });
+                toast({title: 'Éxito', description: 'Registro agregado con éxito.'});
+                form.reset();
+                setPreviews([]);
+                setSelectedYear(currentYear);
+            }
+            if (onSuccess) onSuccess();
+        } catch (error) {
+             toast({variant: 'destructive', title: 'Error', description: 'Ocurrió un error al guardar el registro.'});
+        }
+    });
+  };
+
 
   return (
     <Form {...form}>
-      <form ref={formRef} action={customFormAction} className="space-y-6">
+      <form ref={formRef} onSubmit={handleSubmit(onSubmit)} className="space-y-6">
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           <FormField
             control={control}
@@ -326,7 +311,6 @@ export default function TaxForm({ isEditMode = false, initialData, onSuccess }: 
             render={({ field }) => (
               <FormItem className='hidden'>
                 <FormControl>
-                  {/* This input is just to make react-hook-form happy */}
                   <Input type="hidden" {...field} value={field.value?.join(',') || ''} />
                 </FormControl>
                  <FormMessage />
