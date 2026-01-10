@@ -37,8 +37,8 @@ export type TaxRecord = {
 export const authorizedActivitySchema = z.object({
   code: z.string().min(1, 'El código es requerido.'),
   description: z.string().min(1, 'La descripción es requerida.'),
-  aliquot: z.coerce.number().positive('La alícuota debe ser un número positivo.'),
-  taxableMinimum: z.coerce.number().positive('El mínimo imputable debe ser un número positivo.'),
+  aliquot: z.coerce.number().min(0, 'La alícuota no puede ser negativa.'),
+  taxableMinimum: z.coerce.number().min(0, 'El mínimo imputable no puede ser negativo.'),
 });
 
 export const economicLicenseSchema = z.object({

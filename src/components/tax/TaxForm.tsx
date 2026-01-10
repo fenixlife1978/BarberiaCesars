@@ -11,7 +11,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { useToast } from '@/hooks/use-toast';
 import { addTaxRecord } from '@/app/actions';
-import { UploadCloud, Loader2 } from 'lucide-react';
+import { UploadCloud, Loader2, ChevronLeft, ChevronRight } from 'lucide-react';
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '../ui/form';
 import { processImage } from '@/lib/image-utils';
 import { Checkbox } from '../ui/checkbox';
@@ -36,6 +36,9 @@ export default function TaxForm() {
   const { toast } = useToast();
   const formRef = useRef<HTMLFormElement>(null);
   const [preview, setPreview] = useState<string | null>(null);
+
+  const currentYear = new Date().getFullYear();
+  const [selectedYear, setSelectedYear] = useState(currentYear);
 
   const form = useForm<TaxRecordFormValues>({
     resolver: zodResolver(taxRecordSchema),
@@ -73,6 +76,7 @@ export default function TaxForm() {
       form.reset();
       setPreview(null);
       formRef.current?.reset();
+      setSelectedYear(currentYear);
     } else if (state.status === 'error' && state.message) {
       toast({
         variant: 'destructive',
@@ -80,7 +84,7 @@ export default function TaxForm() {
         description: state.message,
       });
     }
-  }, [state, toast, form]);
+  }, [state, toast, form, currentYear]);
 
   const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -107,6 +111,15 @@ export default function TaxForm() {
   
   const customFormAction = (formData: FormData) => {
     const currentValues = form.getValues();
+    
+    // Clear old formData values for settledMonths
+    formData.delete('settledMonths');
+
+    // Append all selected months from the form's state
+    currentValues.settledMonths.forEach(monthYear => {
+        formData.append('settledMonths', monthYear);
+    });
+
     formData.set('amountBolivares', String(currentValues.amountBolivares));
     formData.set('bcvRate', String(currentValues.bcvRate));
     formData.set('amountEuros', String(currentValues.amountEuros));
@@ -114,8 +127,6 @@ export default function TaxForm() {
     formData.delete('document-input');
     formData.set('document', currentValues.document || '');
 
-    // The settledMonths are already handled by their own name attribute on the checkbox inputs
-    
     formAction(formData);
   }
 
@@ -200,46 +211,47 @@ export default function TaxForm() {
         <FormField
           control={control}
           name="settledMonths"
-          render={() => (
+          render={({ field }) => (
             <FormItem>
               <div className="mb-4">
                 <FormLabel className="text-base">Meses Cancelados</FormLabel>
+                 <div className="flex items-center justify-center gap-4 mt-2">
+                    <Button type="button" variant="outline" size="icon" onClick={() => setSelectedYear(y => y - 1)}>
+                        <ChevronLeft className="h-4 w-4" />
+                    </Button>
+                    <span className="text-lg font-semibold tabular-nums">{selectedYear}</span>
+                    <Button type="button" variant="outline" size="icon" onClick={() => setSelectedYear(y => y + 1)}>
+                        <ChevronRight className="h-4 w-4" />
+                    </Button>
+                </div>
               </div>
               <div className="grid grid-cols-3 sm:grid-cols-4 gap-4">
-                {months.map((month) => (
-                  <FormField
-                    key={month}
-                    control={control}
-                    name="settledMonths"
-                    render={({ field }) => {
-                      return (
-                        <FormItem
-                          key={month}
-                          className="flex flex-row items-start space-x-3 space-y-0"
-                        >
-                          <FormControl>
-                            <Checkbox
-                              value={month}
-                              checked={field.value?.includes(month)}
-                              onCheckedChange={(checked) => {
-                                return checked
-                                  ? field.onChange([...(field.value || []), month])
-                                  : field.onChange(
-                                      field.value?.filter(
-                                        (value) => value !== month
-                                      )
-                                    )
-                              }}
-                            />
-                          </FormControl>
-                          <FormLabel className="font-normal">
-                            {month}
-                          </FormLabel>
-                        </FormItem>
-                      )
-                    }}
-                  />
-                ))}
+                {months.map((month) => {
+                  const monthYear = `${month}-${selectedYear}`;
+                  return (
+                    <FormItem
+                      key={monthYear}
+                      className="flex flex-row items-start space-x-3 space-y-0"
+                    >
+                      <FormControl>
+                        <Checkbox
+                          checked={field.value?.includes(monthYear)}
+                          onCheckedChange={(checked) => {
+                            const newValue = checked
+                              ? [...(field.value || []), monthYear]
+                              : field.value?.filter(
+                                  (value) => value !== monthYear
+                                );
+                            field.onChange(newValue);
+                          }}
+                        />
+                      </FormControl>
+                      <FormLabel className="font-normal">
+                        {month}
+                      </FormLabel>
+                    </FormItem>
+                  )
+                })}
               </div>
               <FormMessage />
             </FormItem>
