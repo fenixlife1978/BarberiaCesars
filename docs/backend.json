@@ -1,0 +1,124 @@
+{
+  "entities": {
+    "PaymentRecord": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "title": "PaymentRecord",
+      "type": "object",
+      "description": "Represents a payment record for monthly business taxes.",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Unique identifier for the PaymentRecord entity."
+        },
+        "paymentDate": {
+          "type": "string",
+          "description": "Date of the payment.",
+          "format": "date"
+        },
+        "taxDescription": {
+          "type": "string",
+          "description": "Description of the tax."
+        },
+        "amountInBolivares": {
+          "type": "number",
+          "description": "Amount paid in Bolivares."
+        },
+        "bcvExchangeRate": {
+          "type": "number",
+          "description": "BCV exchange rate on the day of payment."
+        },
+        "amountInEuros": {
+          "type": "number",
+          "description": "Equivalent amount in Euros (calculated automatically)."
+        },
+        "documentUrl": {
+          "type": "string",
+          "description": "URL of the uploaded JPG document in Firebase Storage.",
+          "format": "uri"
+        },
+        "userId": {
+          "type": "string",
+          "description": "Reference to the User who created the PaymentRecord. (Relationship: User 1:N PaymentRecord)"
+        }
+      },
+      "required": [
+        "id",
+        "paymentDate",
+        "taxDescription",
+        "amountInBolivares",
+        "bcvExchangeRate",
+        "amountInEuros",
+        "documentUrl",
+        "userId"
+      ]
+    },
+    "User": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "title": "User",
+      "type": "object",
+      "description": "Represents a user account for accessing the FiscalFlow application.",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Unique identifier for the User entity."
+        },
+        "email": {
+          "type": "string",
+          "description": "User's email address for login.",
+          "format": "email"
+        }
+      },
+      "required": [
+        "id",
+        "email"
+      ]
+    }
+  },
+  "auth": {
+    "providers": [
+      "password",
+      "anonymous"
+    ]
+  },
+  "firestore": {
+    "structure": [
+      {
+        "path": "/users/{userId}",
+        "definition": {
+          "entityName": "User",
+          "schema": {
+            "$ref": "#/backend/entities/User"
+          },
+          "description": "Stores user profile information. The 'userId' parameter is the Firebase Authentication UID. Access is restricted to authenticated users.",
+          "params": [
+            {
+              "name": "userId",
+              "description": "The Firebase Authentication UID of the user."
+            }
+          ]
+        }
+      },
+      {
+        "path": "/users/{userId}/paymentRecords/{paymentRecordId}",
+        "definition": {
+          "entityName": "PaymentRecord",
+          "schema": {
+            "$ref": "#/backend/entities/PaymentRecord"
+          },
+          "description": "Stores payment records for a specific user. The 'userId' parameter is the Firebase Authentication UID, ensuring path-based ownership. Only the user with the matching UID can access these records.",
+          "params": [
+            {
+              "name": "userId",
+              "description": "The Firebase Authentication UID of the user."
+            },
+            {
+              "name": "paymentRecordId",
+              "description": "Unique identifier for the payment record."
+            }
+          ]
+        }
+      }
+    ],
+    "reasoning": "The Firestore data structure is designed to securely store user payment records for the FiscalFlow application. It prioritizes authorization independence by leveraging path-based ownership for data access. Each user has a dedicated collection for their payment records, ensuring that security rules can be applied consistently and efficiently without relying on complex hierarchical authorization. This design enables simple and robust security rules and avoids `get()` calls in security rules, thus making the system more scalable and debuggable.\n\nAccess is controlled based on the user's ID, which is obtained from Firebase Authentication after the user logs in with email and password. The system uses path-based ownership for payment records, storing them under `/users/{userId}/paymentRecords/{paymentRecordId}`. This approach naturally enforces that only the user associated with the `{userId}` can access payment records under that path. This design allows for secure list operations, as the rules only need to check if the authenticated user ID matches the `{userId}` in the path. The design incorporates the principle of structural segregation by ensuring that all documents within a given collection (e.g., `/users/{userId}/paymentRecords`) share the same security requirements."
+  }
+}
