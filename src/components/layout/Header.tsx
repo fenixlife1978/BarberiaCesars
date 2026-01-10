@@ -3,7 +3,7 @@ import Image from 'next/image';
 import Link from 'next/link';
 import { Button } from '../ui/button';
 import { Sheet, SheetContent, SheetTrigger, SheetTitle, SheetDescription } from '../ui/sheet';
-import { Menu, Settings, LogOut, Home, FileText } from 'lucide-react';
+import { Menu, Settings, LogOut, Home, FileText, BarChart2 } from 'lucide-react';
 import LogoutButton from './LogoutButton';
 import { getSettings } from '@/app/actions';
 
@@ -27,6 +27,9 @@ export default async function Header() {
         <nav className="hidden md:flex items-center gap-2">
           <Button variant="ghost" asChild>
             <Link href="/impuestos">Pagos de Impuestos</Link>
+          </Button>
+           <Button variant="ghost" asChild>
+            <Link href="/reportes">Reportes</Link>
           </Button>
           <Button variant="ghost" asChild>
             <Link href="/licencias-economicas">Licencias Económicas</Link>
@@ -55,6 +58,9 @@ export default async function Header() {
               <nav className="flex flex-col gap-4 mt-8">
                  <Button variant="ghost" className="justify-start" asChild>
                     <Link href="/impuestos"><Home className="mr-2"/> Pagos de Impuestos</Link>
+                </Button>
+                 <Button variant="ghost" className="justify-start" asChild>
+                    <Link href="/reportes"><BarChart2 className="mr-2"/> Reportes</Link>
                 </Button>
                 <Button variant="ghost" className="justify-start" asChild>
                     <Link href="/licencias-economicas"><FileText className="mr-2"/> Licencias</Link>
