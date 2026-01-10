@@ -1,9 +1,17 @@
 'use server';
 
 import { revalidatePath } from 'next/cache';
-import { db } from '@/lib/firebase';
+import { db, storage } from '@/lib/firebase';
 import { addDoc, collection, getDocs, orderBy, query, serverTimestamp } from 'firebase/firestore';
+import { ref, uploadString, getDownloadURL } from 'firebase/storage';
 import { taxRecordSchema, type TaxRecord, economicLicenseSchema, type EconomicLicense } from '@/types';
+
+async function uploadDocument(base64: string, path: string): Promise<string> {
+  const storageRef = ref(storage, path);
+  const snapshot = await uploadString(storageRef, base64, 'data_url');
+  const downloadURL = await getDownloadURL(snapshot.ref);
+  return downloadURL;
+}
 
 export async function getTaxRecords(): Promise<TaxRecord[]> {
   try {
@@ -28,7 +36,7 @@ export async function addTaxRecord(prevState: any, formData: FormData) {
     amountBolivares: formData.get('amountBolivares'),
     bcvRate: formData.get('bcvRate'),
     amountEuros: formData.get('amountEuros'),
-    document: formData.get('document'),
+    document: formData.get('document') || undefined, // Treat empty string as undefined for optional field
   };
 
   const validatedFields = taxRecordSchema.safeParse(rawFormData);
@@ -45,12 +53,17 @@ export async function addTaxRecord(prevState: any, formData: FormData) {
   const calculatedAmountEuros = parseFloat((amountBolivares / bcvRate).toFixed(2));
 
   try {
+    let documentUrl = '';
+    if (document) {
+       documentUrl = await uploadDocument(document, `taxRecords/${Date.now()}.jpg`);
+    }
+
     await addDoc(collection(db, 'taxRecords'), {
       ...rest,
       amountBolivares,
       bcvRate,
       amountEuros: calculatedAmountEuros,
-      documentUrl: document, // Saving base64 string
+      documentUrl: documentUrl,
       createdAt: serverTimestamp(),
     });
 
@@ -99,10 +112,14 @@ export async function addEconomicLicense(prevState: any, formData: FormData) {
 
   try {
     const { document, ...dataToSave } = validatedFields.data;
+    let documentUrl = '';
+    if (document) {
+       documentUrl = await uploadDocument(document, `economicLicenses/${Date.now()}.jpg`);
+    }
 
     await addDoc(collection(db, 'economicLicenses'), {
       ...dataToSave,
-      documentUrl: document, // Saving base64 string or undefined
+      documentUrl: documentUrl,
       createdAt: serverTimestamp(),
     });
 

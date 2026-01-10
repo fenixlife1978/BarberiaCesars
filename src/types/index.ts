@@ -6,7 +6,7 @@ export const taxRecordSchema = z.object({
   amountBolivares: z.coerce.number().positive({ message: "El monto debe ser un número positivo." }),
   bcvRate: z.coerce.number().positive({ message: "La tasa BCV debe ser un número positivo." }),
   amountEuros: z.coerce.number(),
-  document: z.string().min(1, { message: "El documento es requerido." }),
+  document: z.string().optional(),
 });
 
 export type TaxRecordFormValues = z.infer<typeof taxRecordSchema>;
