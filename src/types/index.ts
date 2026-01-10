@@ -18,7 +18,7 @@ export type TaxRecord = {
   amountBolivares: number;
   bcvRate: number;
   amountEuros: number;
-  documentUrl: string;
+  document?: string;
   createdAt: {
     seconds: number;
     nanoseconds: number;
@@ -60,7 +60,7 @@ export type AuthorizedActivityFormValues = z.infer<typeof authorizedActivitySche
 
 export type EconomicLicense = EconomicLicenseFormValues & {
   id: string;
-  documentUrl?: string;
+  document?: string;
   createdAt: {
     seconds: number;
     nanoseconds: number;

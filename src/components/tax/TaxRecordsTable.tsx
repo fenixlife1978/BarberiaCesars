@@ -12,9 +12,11 @@ import {
 } from '@/components/ui/table';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
-import { ExternalLink, FilterX } from 'lucide-react';
+import { Eye, FilterX } from 'lucide-react';
 import { format } from 'date-fns';
 import { es } from 'date-fns/locale';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '../ui/dialog';
+import Image from 'next/image';
 
 type TaxRecordsTableProps = {
   initialRecords: TaxRecord[];
@@ -97,11 +99,23 @@ export default function TaxRecordsTable({ initialRecords }: TaxRecordsTableProps
                   <TableCell className="text-right whitespace-nowrap">{formatCurrency(record.amountBolivares)}</TableCell>
                   <TableCell className="text-right whitespace-nowrap">{formatCurrency(record.amountEuros)}</TableCell>
                   <TableCell className="text-center">
-                    <Button asChild variant="ghost" size="icon">
-                      <a href={record.documentUrl} target="_blank" rel="noopener noreferrer" aria-label="Ver documento">
-                        <ExternalLink className="h-4 w-4" />
-                      </a>
-                    </Button>
+                    {record.document && (
+                      <Dialog>
+                        <DialogTrigger asChild>
+                          <Button variant="ghost" size="icon" aria-label="Ver documento">
+                            <Eye className="h-4 w-4" />
+                          </Button>
+                        </DialogTrigger>
+                        <DialogContent>
+                          <DialogHeader>
+                            <DialogTitle>Comprobante</DialogTitle>
+                          </DialogHeader>
+                          <div className="flex items-center justify-center">
+                            <Image src={record.document} alt="Comprobante" width={400} height={400} className="object-contain rounded-md" />
+                          </div>
+                        </DialogContent>
+                      </Dialog>
+                    )}
                   </TableCell>
                 </TableRow>
               ))

@@ -23,6 +23,7 @@ import {
   DialogTrigger,
 } from "@/components/ui/dialog";
 import { ScrollArea } from '../ui/scroll-area';
+import Image from 'next/image';
 
 type EconomicLicensesTableProps = {
   initialLicenses: EconomicLicense[];
@@ -160,14 +161,12 @@ export default function EconomicLicensesTable({ initialLicenses }: EconomicLicen
                                 </Table>
                             </div>
 
-                            {license.documentUrl && (
+                            {license.document && (
                                 <>
                                 <hr />
                                 <div>
                                     <h4 className="font-semibold text-primary mb-2">Documento Adjunto</h4>
-                                    <a href={license.documentUrl} target="_blank" rel="noopener noreferrer" className="text-primary hover:underline flex items-center gap-2">
-                                    Ver Comprobante <ExternalLink className="h-4 w-4" />
-                                    </a>
+                                    <Image src={license.document} alt="Comprobante" width={200} height={200} className="object-contain rounded-md border" />
                                 </div>
                                 </>
                             )}
@@ -175,13 +174,6 @@ export default function EconomicLicensesTable({ initialLicenses }: EconomicLicen
                         </ScrollArea>
                       </DialogContent>
                     </Dialog>
-                    {license.documentUrl && (
-                        <Button asChild variant="ghost" size="icon">
-                            <a href={license.documentUrl} target="_blank" rel="noopener noreferrer" aria-label="Ver documento adjunto">
-                                <ExternalLink className="h-4 w-4" />
-                            </a>
-                        </Button>
-                    )}
                   </TableCell>
                 </TableRow>
               ))
