@@ -22,18 +22,22 @@ export async function getTaxRecords(): Promise<TaxRecord[]> {
 }
 
 export async function addTaxRecord(prevState: any, formData: FormData) {
+  const settledMonths = formData.getAll('settledMonths') as string[];
   const rawFormData = {
     paymentDate: formData.get('paymentDate'),
     description: formData.get('description'),
+    receiptNumber: formData.get('receiptNumber'),
     amountBolivares: formData.get('amountBolivares'),
     bcvRate: formData.get('bcvRate'),
     amountEuros: formData.get('amountEuros'),
+    settledMonths: settledMonths,
     document: formData.get('document') || undefined,
   };
 
   const validatedFields = taxRecordSchema.safeParse(rawFormData);
   
   if (!validatedFields.success) {
+    console.log(validatedFields.error.flatten().fieldErrors);
     return {
       errors: validatedFields.error.flatten().fieldErrors,
       message: 'Faltan campos. No se pudo agregar el registro.',

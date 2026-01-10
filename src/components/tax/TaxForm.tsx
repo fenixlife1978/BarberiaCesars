@@ -5,7 +5,7 @@ import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import Image from 'next/image';
 
-import { taxRecordSchema, type TaxRecordFormValues } from '@/types';
+import { taxRecordSchema, type TaxRecordFormValues, months } from '@/types';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -14,6 +14,7 @@ import { addTaxRecord } from '@/app/actions';
 import { UploadCloud, Loader2 } from 'lucide-react';
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '../ui/form';
 import { processImage } from '@/lib/image-utils';
+import { Checkbox } from '../ui/checkbox';
 
 const initialState = {
   message: '',
@@ -41,9 +42,11 @@ export default function TaxForm() {
     defaultValues: {
       paymentDate: new Date().toISOString().split('T')[0],
       description: '',
+      receiptNumber: '',
       amountBolivares: 0,
       bcvRate: 0,
       amountEuros: 0,
+      settledMonths: [],
       document: '',
     },
   });
@@ -108,10 +111,10 @@ export default function TaxForm() {
     formData.set('bcvRate', String(currentValues.bcvRate));
     formData.set('amountEuros', String(currentValues.amountEuros));
     
-    // We handle the file via state (base64), so we remove it from form data
-    // to avoid sending a file object.
     formData.delete('document-input');
     formData.set('document', currentValues.document || '');
+
+    // The settledMonths are already handled by their own name attribute on the checkbox inputs
     
     formAction(formData);
   }
@@ -133,7 +136,21 @@ export default function TaxForm() {
               </FormItem>
             )}
           />
-          <FormField
+           <FormField
+            control={control}
+            name="receiptNumber"
+            render={({ field }) => (
+              <FormItem>
+                <FormLabel>Nro. de Recibo</FormLabel>
+                <FormControl>
+                  <Input placeholder="Ej: 001234" {...field} />
+                </FormControl>
+                <FormMessage />
+              </FormItem>
+            )}
+          />
+        </div>
+         <FormField
             control={control}
             name="description"
             render={({ field }) => (
@@ -146,7 +163,7 @@ export default function TaxForm() {
               </FormItem>
             )}
           />
-        </div>
+        
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           <FormField
             control={control}
@@ -166,7 +183,7 @@ export default function TaxForm() {
             name="bcvRate"
             render={({ field }) => (
               <FormItem>
-                <FormLabel>Tasa BCV del día</FormLabel>
+                <FormLabel>Tasa BCV de EUR del día</FormLabel>
                 <FormControl>
                   <Input type="number" step="0.01" {...field} onChange={(e) => field.onChange(parseFloat(e.target.value) || 0)} />
                 </FormControl>
@@ -175,10 +192,61 @@ export default function TaxForm() {
             )}
           />
         </div>
-        <div>
+         <div>
           <Label>Monto en Euros (calculado)</Label>
           <Input type="number" {...register('amountEuros')} readOnly className="mt-2 bg-muted/50" />
         </div>
+
+        <FormField
+          control={control}
+          name="settledMonths"
+          render={() => (
+            <FormItem>
+              <div className="mb-4">
+                <FormLabel className="text-base">Meses Cancelados</FormLabel>
+              </div>
+              <div className="grid grid-cols-3 sm:grid-cols-4 gap-4">
+                {months.map((month) => (
+                  <FormField
+                    key={month}
+                    control={control}
+                    name="settledMonths"
+                    render={({ field }) => {
+                      return (
+                        <FormItem
+                          key={month}
+                          className="flex flex-row items-start space-x-3 space-y-0"
+                        >
+                          <FormControl>
+                            <Checkbox
+                              value={month}
+                              checked={field.value?.includes(month)}
+                              onCheckedChange={(checked) => {
+                                return checked
+                                  ? field.onChange([...(field.value || []), month])
+                                  : field.onChange(
+                                      field.value?.filter(
+                                        (value) => value !== month
+                                      )
+                                    )
+                              }}
+                            />
+                          </FormControl>
+                          <FormLabel className="font-normal">
+                            {month}
+                          </FormLabel>
+                        </FormItem>
+                      )
+                    }}
+                  />
+                ))}
+              </div>
+              <FormMessage />
+            </FormItem>
+          )}
+        />
+
+       
         <div>
           <Label htmlFor="document-input">Comprobante (JPG)</Label>
           <div className="mt-2 flex justify-center rounded-lg border border-dashed border-border px-6 py-10">

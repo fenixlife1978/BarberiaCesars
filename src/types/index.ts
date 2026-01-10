@@ -1,11 +1,18 @@
 import { z } from "zod";
 
+export const months = [
+  "Enero", "Febrero", "Marzo", "Abril", "Mayo", "Junio",
+  "Julio", "Agosto", "Septiembre", "Octubre", "Noviembre", "Diciembre"
+];
+
 export const taxRecordSchema = z.object({
   paymentDate: z.string().min(1, { message: "La fecha es requerida." }),
   description: z.string().min(3, { message: "La descripción debe tener al menos 3 caracteres." }),
+  receiptNumber: z.string().min(1, { message: "El número de recibo es requerido." }),
   amountBolivares: z.coerce.number().positive({ message: "El monto debe ser un número positivo." }),
   bcvRate: z.coerce.number().positive({ message: "La tasa BCV debe ser un número positivo." }),
   amountEuros: z.coerce.number(),
+  settledMonths: z.array(z.string()).min(1, { message: "Debes seleccionar al menos un mes." }),
   document: z.string().optional(),
 });
 
@@ -15,9 +22,11 @@ export type TaxRecord = {
   id: string;
   paymentDate: string;
   description: string;
+  receiptNumber: string;
   amountBolivares: number;
   bcvRate: number;
   amountEuros: number;
+  settledMonths: string[];
   document?: string;
   createdAt: {
     seconds: number;

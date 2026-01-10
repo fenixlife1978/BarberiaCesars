@@ -17,6 +17,7 @@ import { format } from 'date-fns';
 import { es } from 'date-fns/locale';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '../ui/dialog';
 import Image from 'next/image';
+import { Badge } from '../ui/badge';
 
 type TaxRecordsTableProps = {
   initialRecords: TaxRecord[];
@@ -83,9 +84,9 @@ export default function TaxRecordsTable({ initialRecords }: TaxRecordsTableProps
             <TableRow>
               <TableHead>Fecha</TableHead>
               <TableHead>Descripción</TableHead>
-              <TableHead className="text-right">Monto (Bs.)</TableHead>
+              <TableHead>Meses</TableHead>
               <TableHead className="text-right">Monto (€)</TableHead>
-              <TableHead className="text-center">Doc.</TableHead>
+              <TableHead className="text-center">Acciones</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
@@ -96,26 +97,49 @@ export default function TaxRecordsTable({ initialRecords }: TaxRecordsTableProps
                     {formatDate(record.paymentDate)}
                   </TableCell>
                   <TableCell>{record.description}</TableCell>
-                  <TableCell className="text-right whitespace-nowrap">{formatCurrency(record.amountBolivares)}</TableCell>
+                  <TableCell>
+                    <div className="flex flex-wrap gap-1">
+                      {record.settledMonths?.map(month => (
+                        <Badge key={month} variant="secondary">{month}</Badge>
+                      ))}
+                    </div>
+                  </TableCell>
                   <TableCell className="text-right whitespace-nowrap">{formatCurrency(record.amountEuros)}</TableCell>
                   <TableCell className="text-center">
-                    {record.document && (
                       <Dialog>
                         <DialogTrigger asChild>
-                          <Button variant="ghost" size="icon" aria-label="Ver documento">
+                          <Button variant="ghost" size="icon" aria-label="Ver detalles">
                             <Eye className="h-4 w-4" />
                           </Button>
                         </DialogTrigger>
                         <DialogContent>
                           <DialogHeader>
-                            <DialogTitle>Comprobante</DialogTitle>
+                            <DialogTitle>Detalles del Pago</DialogTitle>
                           </DialogHeader>
-                          <div className="flex items-center justify-center">
-                            <Image src={record.document} alt="Comprobante" width={400} height={400} className="object-contain rounded-md" />
+                           <div className="space-y-4">
+                            <p><strong className="font-medium">Fecha:</strong> {formatDate(record.paymentDate)}</p>
+                            <p><strong className="font-medium">Descripción:</strong> {record.description}</p>
+                            <p><strong className="font-medium">Nro. Recibo:</strong> {record.receiptNumber}</p>
+                            <p><strong className="font-medium">Monto (Bs.):</strong> {formatCurrency(record.amountBolivares)}</p>
+                            <p><strong className="font-medium">Tasa BCV (€):</strong> {formatCurrency(record.bcvRate)}</p>
+                            <p><strong className="font-medium">Monto (€):</strong> {formatCurrency(record.amountEuros)}</p>
+                            <div>
+                                <strong className="font-medium">Meses liquidados:</strong>
+                                <div className="flex flex-wrap gap-2 mt-2">
+                                {record.settledMonths?.map(m => <Badge key={m} variant="outline">{m}</Badge>)}
+                                </div>
+                            </div>
+                            {record.document && (
+                              <div>
+                                <strong className="font-medium">Comprobante:</strong>
+                                <div className="mt-2 flex items-center justify-center">
+                                  <Image src={record.document} alt="Comprobante" width={400} height={400} className="object-contain rounded-md" />
+                                </div>
+                              </div>
+                            )}
                           </div>
                         </DialogContent>
                       </Dialog>
-                    )}
                   </TableCell>
                 </TableRow>
               ))
