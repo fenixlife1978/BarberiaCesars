@@ -2,7 +2,6 @@
 'use client';
 
 import { useActionState } from 'react';
-import { useFormState } from 'react-dom';
 import { login } from '@/app/auth/actions';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -12,7 +11,6 @@ import { useToast } from '@/hooks/use-toast';
 import { useEffect } from 'react';
 import { Loader2 } from 'lucide-react';
 import Image from 'next/image';
-import { getSettings } from '@/app/actions';
 
 const initialState = {
   message: '',
