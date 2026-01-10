@@ -37,14 +37,6 @@ const nextConfig: NextConfig = {
       }
     ],
   },
-   async rewrites() {
-    return [
-      {
-        source: '/',
-        destination: '/ajustes',
-      },
-    ]
-  },
 };
 
 export default nextConfig;
