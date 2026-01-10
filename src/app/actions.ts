@@ -221,12 +221,16 @@ export async function updateSettings(prevState: any, formData: FormData) {
 
     const dataToUpdate: { accessKey?: string; logoUrl?: string } = {};
 
-    if (accessKey) {
+    // Solo incluimos los campos que tienen un valor.
+    // Si la clave de acceso está vacía, no la actualizamos para que no se borre.
+    if (accessKey && accessKey.length > 0) {
       dataToUpdate.accessKey = accessKey;
     }
-    if (logoUrl) {
+    // Para el logo, sí permitimos que se borre si el string está vacío.
+    if (logoUrl !== undefined) {
       dataToUpdate.logoUrl = logoUrl;
     }
+
 
     if (Object.keys(dataToUpdate).length === 0) {
       return { message: 'No hay cambios para guardar.', status: 'success' };

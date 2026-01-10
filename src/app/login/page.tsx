@@ -1,16 +1,17 @@
 
 'use client';
 
-import { useActionState } from 'react';
+import { useActionState, useEffect, useState } from 'react';
 import { login } from '@/app/auth/actions';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { useToast } from '@/hooks/use-toast';
-import { useEffect } from 'react';
 import { Loader2 } from 'lucide-react';
 import Image from 'next/image';
+import { getSettings } from '@/app/actions';
+import type { Settings } from '@/types';
 
 const initialState = {
   message: '',
@@ -29,6 +30,21 @@ function SubmitButton({ isPending }: { isPending: boolean }) {
 export default function LoginPage() {
   const [state, formAction, isPending] = useActionState(login, initialState);
   const { toast } = useToast();
+  const [logoUrl, setLogoUrl] = useState('/logo.png');
+
+  useEffect(() => {
+    async function fetchLogo() {
+      try {
+        const settings: Settings | null = await getSettings();
+        if (settings?.logoUrl) {
+          setLogoUrl(settings.logoUrl);
+        }
+      } catch (error) {
+        console.error("Failed to fetch settings for logo", error);
+      }
+    }
+    fetchLogo();
+  }, []);
 
   useEffect(() => {
     if (state.message && !state.success) {
@@ -43,7 +59,9 @@ export default function LoginPage() {
   return (
     <div className="flex min-h-screen flex-col items-center justify-center bg-background p-4">
        <div className="absolute top-8 flex items-center gap-4">
-          <Image src="/logo.png" alt="Barberia Cesar's Logo" width={80} height={80} className="rounded-full" />
+          <div className="relative w-20 h-20">
+            <Image src={logoUrl} alt="Barberia Cesar's Logo" fill sizes="80px" className="rounded-full object-cover" />
+          </div>
           <h1 className="text-4xl font-bold text-primary">Barberia Cesar's</h1>
       </div>
       <Card className="w-full max-w-sm shadow-2xl">

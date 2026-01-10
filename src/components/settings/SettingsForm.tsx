@@ -43,12 +43,13 @@ export default function SettingsForm({ initialSettings }: SettingsFormProps) {
   const form = useForm<SettingsFormValues>({
     resolver: zodResolver(settingsSchema),
     defaultValues: {
-      accessKey: initialSettings?.accessKey || '',
+      accessKey: '', // Siempre empezar vacío por seguridad
       logoUrl: initialSettings?.logoUrl || '',
     },
   });
 
-  const { setValue } = form;
+  const { setValue, watch } = form;
+  const currentLogoUrl = watch('logoUrl');
 
   useEffect(() => {
     if (state.status === 'success') {
@@ -56,7 +57,13 @@ export default function SettingsForm({ initialSettings }: SettingsFormProps) {
         title: 'Éxito',
         description: state.message,
       });
-      // Optionally reload or refetch data if needed
+       if(currentLogoUrl){
+        setLogoPreview(currentLogoUrl);
+      }
+      form.reset({
+        accessKey: '', // Limpiar el campo de clave de acceso después de guardar
+        logoUrl: currentLogoUrl,
+      });
     } else if (state.status === 'error') {
       toast({
         variant: 'destructive',
@@ -64,7 +71,7 @@ export default function SettingsForm({ initialSettings }: SettingsFormProps) {
         description: state.message || 'No se pudieron guardar los ajustes.',
       });
     }
-  }, [state, toast]);
+  }, [state, toast, form, currentLogoUrl]);
   
   const handleLogoChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -91,7 +98,7 @@ export default function SettingsForm({ initialSettings }: SettingsFormProps) {
 
   const customAction = (formData: FormData) => {
     const values = form.getValues();
-    formData.set('logoUrl', values.logoUrl);
+    formData.set('logoUrl', values.logoUrl || ''); // Asegurarse que es un string
     formAction(formData);
   }
 
@@ -122,7 +129,9 @@ export default function SettingsForm({ initialSettings }: SettingsFormProps) {
           <div className="mt-2 flex flex-col items-center justify-center rounded-lg border border-dashed border-border px-6 py-10">
             {logoPreview ? (
               <div className="relative group">
-                <Image src={logoPreview} alt="Vista previa del logo" width={120} height={120} className="h-32 w-32 rounded-full object-cover" />
+                 <div className="relative w-32 h-32">
+                    <Image src={logoPreview} alt="Vista previa del logo" fill sizes="128px" className="rounded-full object-cover" />
+                 </div>
                  <Button
                       type="button"
                       variant="destructive"
