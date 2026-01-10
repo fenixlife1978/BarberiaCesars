@@ -14,13 +14,9 @@ export async function login(prevState: any, formData: FormData) {
   try {
     const settings = await getSettings();
     
-    // Si no hay ajustes en la DB o si no se ha definido una clave, no se puede iniciar sesión.
-    // La clave '123456' solo funciona si la colección 'settings' NO existe.
-    // Una vez se guarda algo en ajustes, la clave debe gestionarse desde ahí.
-    if (!settings?.accessKey) {
-        // Caso especial: si la colección de ajustes NO existe, permitimos el PIN por defecto.
-        // `getSettings` devuelve `null` si la colección está vacía.
-        if (settings === null && pin === '123456') {
+    // Si no hay ajustes en la DB (`settings` es null) o no se ha definido una clave, usamos la lógica de PIN por defecto.
+    if (!settings || !settings.accessKey) {
+        if (pin === '123456') {
              const cookieStore = cookies();
             cookieStore.set('session', 'true', {
                 httpOnly: true,
@@ -29,10 +25,13 @@ export async function login(prevState: any, formData: FormData) {
                 path: '/',
             });
             redirect('/impuestos');
+        } else {
+            // Si no hay clave en la DB y el PIN no es el de por defecto.
+            return { message: 'El PIN es incorrecto.', success: false };
         }
-      return { message: 'La clave de acceso no ha sido configurada en los Ajustes del sistema.', success: false };
     }
     
+    // Si hay ajustes y una clave definida, la comparamos.
     if (pin === settings.accessKey) {
       const cookieStore = cookies();
       cookieStore.set('session', 'true', {
@@ -47,12 +46,9 @@ export async function login(prevState: any, formData: FormData) {
     }
   } catch (error) {
     console.error("Login error:", error);
-    if (error instanceof FirebaseError) {
-         if (error.code === 'permission-denied') {
-            return { message: 'Acceso denegado por las reglas de seguridad. Asegúrate de que las reglas de Firestore permitan leer la configuración.', success: false };
-         }
-    }
-    return { message: 'Ocurrió un error al verificar el PIN. Revisa la conexión y las reglas de la base de datos.', success: false };
+    // Este catch es ahora un respaldo para errores inesperados de red o configuración,
+    // pero el flujo principal de "permiso denegado" ya no debería ocurrir aquí.
+    return { message: 'Ocurrió un error inesperado al verificar el PIN. Revisa tu conexión a internet.', success: false };
   }
 }
 
