@@ -48,7 +48,7 @@ export default function TaxForm() {
     },
   });
 
-  const { watch, setValue, control } = form;
+  const { watch, setValue, control, register } = form;
   const amountBolivares = watch('amountBolivares');
   const bcvRate = watch('bcvRate');
 
@@ -101,10 +101,24 @@ export default function TaxForm() {
       }
     }
   };
+  
+  const customFormAction = (formData: FormData) => {
+    const currentValues = form.getValues();
+    formData.set('amountBolivares', String(currentValues.amountBolivares));
+    formData.set('bcvRate', String(currentValues.bcvRate));
+    formData.set('amountEuros', String(currentValues.amountEuros));
+    
+    // We handle the file via state (base64), so we remove it from form data
+    // to avoid sending a file object.
+    formData.delete('document-input');
+    formData.set('document', currentValues.document || '');
+    
+    formAction(formData);
+  }
 
   return (
     <Form {...form}>
-      <form ref={formRef} action={formAction} className="space-y-6">
+      <form ref={formRef} action={customFormAction} className="space-y-6">
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           <FormField
             control={control}
@@ -163,7 +177,7 @@ export default function TaxForm() {
         </div>
         <div>
           <Label>Monto en Euros (calculado)</Label>
-          <Input type="number" {...form.register('amountEuros')} readOnly className="mt-2 bg-muted/50" />
+          <Input type="number" {...register('amountEuros')} readOnly className="mt-2 bg-muted/50" />
         </div>
         <div>
           <Label htmlFor="document-input">Comprobante (JPG)</Label>
