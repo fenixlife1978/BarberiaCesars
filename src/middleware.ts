@@ -10,17 +10,24 @@ export async function middleware(request: NextRequest) {
   const cookieStore = cookies();
   const session = cookieStore.get('session');
 
-  const isProtectedRoute = PROTECTED_ROUTES.some(route => pathname.startsWith(route));
+  const isProtectedRoute = PROTECTED_ROUTES.some(route => pathname.startsWith(route)) || pathname === '/';
 
   if (isProtectedRoute && !session) {
-    return NextResponse.redirect(new URL('/login', request.url));
+    // Si la ruta es la raíz y no hay sesión, llévalo al login.
+    // Si es otra ruta protegida, también al login.
+    if (pathname === '/') {
+       return NextResponse.redirect(new URL('/login', request.url));
+    }
+    return NextResponse.redirect(new URL(`/login?redirect=${pathname}`, request.url));
   }
   
-  if (pathname === '/' && !session) {
-     return NextResponse.redirect(new URL('/login', request.url));
+  if (session && PUBLIC_ROUTES.includes(pathname)) {
+    // Si hay sesión y trata de ir a /login, redirige a /impuestos
+    return NextResponse.redirect(new URL('/impuestos', request.url));
   }
 
-  if (session && (PUBLIC_ROUTES.includes(pathname) || pathname === '/')) {
+  // Si hay sesión y va a la raíz, llévalo a /impuestos.
+  if (session && pathname === '/') {
     return NextResponse.redirect(new URL('/impuestos', request.url));
   }
 
