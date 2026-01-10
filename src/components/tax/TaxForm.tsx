@@ -136,7 +136,7 @@ export default function TaxForm() {
               <FormItem>
                 <FormLabel>Monto en Bolívares</FormLabel>
                 <FormControl>
-                  <Input type="number" step="0.01" {...field} />
+                  <Input type="number" step="0.01" {...field} onChange={(e) => field.onChange(parseFloat(e.target.value) || 0)} />
                 </FormControl>
                 <FormMessage />
               </FormItem>
@@ -149,7 +149,7 @@ export default function TaxForm() {
               <FormItem>
                 <FormLabel>Tasa BCV del día</FormLabel>
                 <FormControl>
-                  <Input type="number" step="0.01" {...field} />
+                  <Input type="number" step="0.01" {...field} onChange={(e) => field.onChange(parseFloat(e.target.value) || 0)} />
                 </FormControl>
                 <FormMessage />
               </FormItem>
