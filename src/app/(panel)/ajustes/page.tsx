@@ -2,9 +2,15 @@
 import { getSettings } from "@/app/actions";
 import SettingsForm from "@/components/settings/SettingsForm";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { getAuthenticatedUser } from "@/app/auth/get-authenticated-user";
+import { redirect } from 'next/navigation';
 
 export default async function SettingsPage() {
-  const settings = await getSettings();
+  const user = await getAuthenticatedUser();
+  if (!user) {
+    redirect('/login');
+  }
+  const settings = await getSettings(user.uid);
 
   return (
     <div className="flex justify-center">

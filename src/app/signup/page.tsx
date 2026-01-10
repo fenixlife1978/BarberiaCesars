@@ -1,7 +1,7 @@
 'use client';
 
 import { useActionState, useEffect } from 'react';
-import { login } from '@/app/auth/actions';
+import { signup } from '@/app/auth/actions';
 import { Button } from '@/components/ui/button';
 import {
   Card,
@@ -25,19 +25,19 @@ function SubmitButton({ isPending }: { isPending: boolean }) {
   return (
     <Button type="submit" disabled={isPending} className="w-full">
       {isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-      Ingresar
+      Crear Cuenta
     </Button>
   );
 }
 
-export default function LoginPage() {
-  const [state, formAction, isPending] = useActionState(login, initialState);
+export default function SignupPage() {
+  const [state, formAction, isPending] = useActionState(signup, initialState);
   const { toast } = useToast();
 
   useEffect(() => {
     if (state.message) {
       toast({
-        title: state.success ? 'Éxito' : 'Error de Acceso',
+        title: state.success ? 'Cuenta Creada' : 'Error de Registro',
         description: state.message,
         variant: state.success ? 'default' : 'destructive',
       });
@@ -46,14 +46,14 @@ export default function LoginPage() {
 
   return (
     <div className="flex min-h-screen flex-col items-center justify-center bg-background p-4">
-      <div className="absolute top-8 flex items-center gap-4">
-        <h1 className="text-4xl font-bold text-primary">FiscalFlow</h1>
+       <div className="absolute top-8 flex items-center gap-4">
+         <h1 className="text-4xl font-bold text-primary">FiscalFlow</h1>
       </div>
       <Card className="w-full max-w-sm shadow-2xl">
         <CardHeader className="text-center">
-          <CardTitle className="text-2xl">Iniciar Sesión</CardTitle>
+          <CardTitle className="text-2xl">Crear Nueva Cuenta</CardTitle>
           <CardDescription>
-            Ingresa tus credenciales para acceder al panel
+            Completa tus datos para registrarte
           </CardDescription>
         </CardHeader>
         <CardContent>
@@ -75,15 +75,26 @@ export default function LoginPage() {
                 name="password"
                 type="password"
                 required
-                placeholder="********"
+                placeholder="Mínimo 6 caracteres"
+                minLength={6}
+              />
+            </div>
+             <div className="space-y-2">
+              <Label htmlFor="confirmPassword">Confirmar Contraseña</Label>
+              <Input
+                id="confirmPassword"
+                name="confirmPassword"
+                type="password"
+                required
+                placeholder="Repite tu contraseña"
               />
             </div>
             <SubmitButton isPending={isPending} />
           </form>
-          <p className="mt-4 text-center text-sm text-muted-foreground">
-            ¿No tienes una cuenta?{' '}
-            <Link href="/signup" className="font-semibold text-primary hover:underline">
-              Regístrate
+           <p className="mt-4 text-center text-sm text-muted-foreground">
+            ¿Ya tienes una cuenta?{' '}
+            <Link href="/login" className="font-semibold text-primary hover:underline">
+              Inicia Sesión
             </Link>
           </p>
         </CardContent>

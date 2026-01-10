@@ -4,16 +4,17 @@ import { getTaxRecords } from "@/app/actions";
 import TaxRecordsTable from "@/components/tax/TaxRecordsTable";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import TaxChart from "@/components/tax/TaxChart";
+import { getAuthenticatedUser } from "@/app/auth/get-authenticated-user";
+import { redirect } from "next/navigation";
 
 export default async function ImpuestosPage() {
-  // 1. Obtenemos los registros del servidor
-  const rawRecords = await getTaxRecords();
+  const user = await getAuthenticatedUser();
+  if (!user) {
+    redirect('/login');
+  }
 
-  /**
-   * 2. CORRECCIÓN CLAVE: Serialización
-   * Next.js a veces falla al pasar objetos Date de la DB a componentes.
-   * Al hacer stringify y parse, garantizamos que los datos sean JSON puro.
-   */
+  const rawRecords = await getTaxRecords(user.uid);
+
   const initialRecords = JSON.parse(JSON.stringify(rawRecords));
 
   return (
@@ -24,7 +25,6 @@ export default async function ImpuestosPage() {
             <CardTitle className="text-2xl font-headline">Registrar Nuevo Pago de Impuestos</CardTitle>
           </CardHeader>
           <CardContent>
-            {/* Este formulario gatilla la acción que guarda los datos */}
             <TaxForm />
           </CardContent>
         </Card>
@@ -34,7 +34,7 @@ export default async function ImpuestosPage() {
         <Card className="shadow-lg">
            <CardHeader>
             <CardTitle className="text-2xl font-headline">Impuestos de los Últimos 6 Meses (€)</CardTitle>
-          </CardHeader>
+           </CardHeader>
           <CardContent>
             <TaxChart records={initialRecords} />
           </CardContent>
@@ -43,9 +43,8 @@ export default async function ImpuestosPage() {
         <Card className="shadow-lg">
            <CardHeader>
             <CardTitle className="text-2xl font-headline">Historial de Pagos de Impuestos</CardTitle>
-          </CardHeader>
+           </CardHeader>
           <CardContent>
-            {/* Pasamos los registros ya serializados para evitar errores de hidratación */}
             <TaxRecordsTable initialRecords={initialRecords} />
           </CardContent>
         </Card>

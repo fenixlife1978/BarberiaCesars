@@ -5,13 +5,14 @@ import { revalidatePath } from 'next/cache';
 import { db } from '@/lib/firebase';
 import { addDoc, collection, getDocs, orderBy, query, serverTimestamp, doc, updateDoc, limit } from 'firebase/firestore';
 import { taxRecordSchema, type TaxRecord, economicLicenseSchema, type EconomicLicense, taxRecordWithIdSchema, settingsSchema, type Settings } from '@/types';
+import { getAuthenticatedUser } from './auth/get-authenticated-user';
 
 // Función auxiliar para limpiar datos de Firebase (Timestamps, etc)
 const serializeData = (data: any) => JSON.parse(JSON.stringify(data));
 
-export async function getTaxRecords(): Promise<TaxRecord[]> {
+export async function getTaxRecords(userId: string): Promise<TaxRecord[]> {
   try {
-    const recordsCollection = collection(db, 'taxRecords');
+    const recordsCollection = collection(db, 'users', userId, 'taxRecords');
     const q = query(recordsCollection, orderBy('createdAt', 'desc'));
     const querySnapshot = await getDocs(q);
     const records = querySnapshot.docs.map(doc => ({
@@ -26,6 +27,11 @@ export async function getTaxRecords(): Promise<TaxRecord[]> {
 }
 
 export async function addTaxRecord(prevState: any, formData: FormData) {
+  const user = await getAuthenticatedUser();
+  if (!user) {
+    return { message: 'Usuario no autenticado.', status: 'error' };
+  }
+
   const settledMonths = formData.getAll('settledMonths') as string[];
   const documents = formData.getAll('documents').map(d => d.toString());
   
@@ -55,12 +61,14 @@ export async function addTaxRecord(prevState: any, formData: FormData) {
 
   let success = false;
   try {
-    await addDoc(collection(db, 'taxRecords'), {
+    const recordsCollection = collection(db, 'users', user.uid, 'taxRecords');
+    await addDoc(recordsCollection, {
       ...rest,
       amountBolivares,
       bcvRate,
       amountEuros: calculatedAmountEuros,
       createdAt: serverTimestamp(),
+      userId: user.uid,
     });
     success = true;
   } catch (error) {
@@ -68,7 +76,6 @@ export async function addTaxRecord(prevState: any, formData: FormData) {
     return { message: 'Error al agregar el registro.', status: 'error' };
   }
 
-  // REVALIDAR FUERA DEL TRY/CATCH
   if (success) {
     revalidatePath('/impuestos');
     return { message: 'Registro de impuesto agregado con éxito.', status: 'success' };
@@ -76,6 +83,11 @@ export async function addTaxRecord(prevState: any, formData: FormData) {
 }
 
 export async function updateTaxRecord(prevState: any, formData: FormData) {
+  const user = await getAuthenticatedUser();
+  if (!user) {
+    return { message: 'Usuario no autenticado.', status: 'error' };
+  }
+
   const settledMonths = formData.getAll('settledMonths') as string[];
   const documents = formData.getAll('documents').map(d => d.toString());
   
@@ -106,7 +118,7 @@ export async function updateTaxRecord(prevState: any, formData: FormData) {
   
   let success = false;
   try {
-    const recordRef = doc(db, 'taxRecords', id);
+    const recordRef = doc(db, 'users', user.uid, 'taxRecords', id);
     await updateDoc(recordRef, {
       ...rest,
       amountBolivares,
@@ -125,9 +137,9 @@ export async function updateTaxRecord(prevState: any, formData: FormData) {
   }
 }
 
-export async function getEconomicLicenses(): Promise<EconomicLicense[]> {
+export async function getEconomicLicenses(userId: string): Promise<EconomicLicense[]> {
   try {
-    const licensesCollection = collection(db, 'economicLicenses');
+    const licensesCollection = collection(db, 'users', userId, 'economicLicenses');
     const q = query(licensesCollection, orderBy('createdAt', 'desc'));
     const querySnapshot = await getDocs(q);
     const licenses = querySnapshot.docs.map(doc => ({
@@ -142,6 +154,11 @@ export async function getEconomicLicenses(): Promise<EconomicLicense[]> {
 }
 
 export async function addEconomicLicense(prevState: any, formData: FormData) {
+  const user = await getAuthenticatedUser();
+  if (!user) {
+    return { message: 'Usuario no autenticado.', status: 'error' };
+  }
+  
   const rawData = Object.fromEntries(formData.entries());
   const authorizedActivities = JSON.parse(rawData.authorizedActivities as string);
   const documents = formData.getAll('documents').map(d => d.toString());
@@ -165,9 +182,11 @@ export async function addEconomicLicense(prevState: any, formData: FormData) {
 
   let success = false;
   try {
-    await addDoc(collection(db, 'economicLicenses'), {
+    const licensesCollection = collection(db, 'users', user.uid, 'economicLicenses');
+    await addDoc(licensesCollection, {
       ...validatedFields.data,
       createdAt: serverTimestamp(),
+      userId: user.uid,
     });
     success = true;
   } catch (error) {
@@ -182,17 +201,17 @@ export async function addEconomicLicense(prevState: any, formData: FormData) {
 }
 
 // Settings Actions
-export async function getSettings(): Promise<Settings | null> {
+export async function getSettings(userId: string): Promise<Settings | null> {
   try {
-    const settingsCollection = collection(db, 'settings');
-    const q = query(settingsCollection, limit(1));
-    const querySnapshot = await getDocs(q);
+    const settingsDocRef = doc(db, 'users', userId, 'settings', 'general');
+    const settingsDoc = await getDocs(query(collection(db, 'users', userId, 'settings'), limit(1)));
 
-    if (querySnapshot.empty) {
+
+    if (settingsDoc.empty) {
       return null;
     }
-    const settingsDoc = querySnapshot.docs[0];
-    return serializeData({ id: settingsDoc.id, ...settingsDoc.data() }) as Settings;
+    const settingsData = settingsDoc.docs[0];
+    return serializeData({ id: settingsData.id, ...settingsData.data() }) as Settings;
   } catch (error) {
     console.error("Error fetching settings: ", error);
     return null;
@@ -200,8 +219,12 @@ export async function getSettings(): Promise<Settings | null> {
 }
 
 export async function updateSettings(prevState: any, formData: FormData) {
+  const user = await getAuthenticatedUser();
+  if (!user) {
+    return { message: 'Usuario no autenticado.', status: 'error' };
+  }
+
   const rawData = {
-    accessKey: formData.get('accessKey'),
     logoUrl: formData.get('logoUrl'),
   };
 
@@ -216,37 +239,10 @@ export async function updateSettings(prevState: any, formData: FormData) {
   }
 
   try {
-    const currentSettings = await getSettings();
-    const { accessKey, logoUrl } = validatedFields.data;
-
-    const dataToUpdate: { accessKey?: string; logoUrl?: string } = {};
-
-    // Solo incluimos los campos que tienen un valor.
-    // Si la clave de acceso está vacía, no la actualizamos para que no se borre.
-    if (accessKey && accessKey.length > 0) {
-      dataToUpdate.accessKey = accessKey;
-    }
-    // Para el logo, sí permitimos que se borre si el string está vacío.
-    if (logoUrl !== undefined) {
-      dataToUpdate.logoUrl = logoUrl;
-    }
-
-
-    if (Object.keys(dataToUpdate).length === 0) {
-      return { message: 'No hay cambios para guardar.', status: 'success' };
-    }
-
-    if (currentSettings) {
-      // Update existing settings
-      const settingsRef = doc(db, 'settings', currentSettings.id);
-      await updateDoc(settingsRef, dataToUpdate);
-    } else {
-      // Create new settings document
-      await addDoc(collection(db, 'settings'), dataToUpdate);
-    }
+    const settingsRef = doc(db, 'users', user.uid, 'settings', 'general');
+    await updateDoc(settingsRef, validatedFields.data, { merge: true });
 
     revalidatePath('/ajustes');
-    revalidatePath('/login'); // To update logo on login page
     revalidatePath('/(panel)', 'layout'); // To update logo in header
 
     return { message: 'Ajustes guardados con éxito.', status: 'success' };

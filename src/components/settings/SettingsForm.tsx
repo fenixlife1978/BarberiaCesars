@@ -9,9 +9,9 @@ import { settingsSchema, type Settings, type SettingsFormValues } from '@/types'
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
+import { Form, FormControl, FormField, FormItem } from '@/components/ui/form';
 import { useToast } from '@/hooks/use-toast';
-import { Loader2, UploadCloud, X, Eye, EyeOff } from 'lucide-react';
+import { Loader2, UploadCloud, X } from 'lucide-react';
 import Image from 'next/image';
 import { processImage } from '@/lib/image-utils';
 
@@ -39,12 +39,10 @@ export default function SettingsForm({ initialSettings }: SettingsFormProps) {
   const { toast } = useToast();
   const formRef = useRef<HTMLFormElement>(null);
   const [logoPreview, setLogoPreview] = useState<string | null>(initialSettings?.logoUrl || null);
-  const [showKey, setShowKey] = useState(false);
 
   const form = useForm<SettingsFormValues>({
     resolver: zodResolver(settingsSchema),
     defaultValues: {
-      accessKey: '', // Siempre empezar vacío por seguridad
       logoUrl: initialSettings?.logoUrl || '',
     },
   });
@@ -62,7 +60,6 @@ export default function SettingsForm({ initialSettings }: SettingsFormProps) {
         setLogoPreview(currentLogoUrl);
       }
       form.reset({
-        accessKey: '', // Limpiar el campo de clave de acceso después de guardar
         logoUrl: currentLogoUrl,
       });
     } else if (state.status === 'error') {
@@ -106,38 +103,6 @@ export default function SettingsForm({ initialSettings }: SettingsFormProps) {
   return (
     <Form {...form}>
       <form ref={formRef} action={customAction} className="space-y-8">
-        <FormField
-          control={form.control}
-          name="accessKey"
-          render={({ field }) => (
-            <FormItem>
-              <FormLabel>Nueva Clave de Acceso (6 dígitos)</FormLabel>
-              <div className="relative">
-                <FormControl>
-                  <Input
-                    type={showKey ? 'text' : 'password'}
-                    maxLength={6}
-                    placeholder="Dejar en blanco para no cambiar"
-                    {...field}
-                    className="pr-10"
-                  />
-                </FormControl>
-                <Button
-                    type="button"
-                    variant="ghost"
-                    size="icon"
-                    className="absolute inset-y-0 right-0 h-full px-3"
-                    onClick={() => setShowKey(!showKey)}
-                    aria-label={showKey ? 'Ocultar clave' : 'Mostrar clave'}
-                >
-                    {showKey ? <EyeOff /> : <Eye />}
-                </Button>
-              </div>
-              <FormMessage />
-            </FormItem>
-          )}
-        />
-
         <div>
           <Label>Logo de la Empresa</Label>
           <div className="mt-2 flex flex-col items-center justify-center rounded-lg border border-dashed border-border px-6 py-10">
@@ -171,6 +136,17 @@ export default function SettingsForm({ initialSettings }: SettingsFormProps) {
             )}
           </div>
         </div>
+         <FormField
+            control={form.control}
+            name="logoUrl"
+            render={({ field }) => (
+              <FormItem className='hidden'>
+                <FormControl>
+                  <Input type="hidden" {...field} />
+                </FormControl>
+              </FormItem>
+            )}
+          />
 
         <SubmitButton isPending={isPending} />
       </form>

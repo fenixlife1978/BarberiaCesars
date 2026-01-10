@@ -15,6 +15,7 @@ export const taxRecordSchema = z.object({
   amountEuros: z.coerce.number(),
   settledMonths: z.array(z.string()).min(1, { message: "Debes seleccionar al menos un mes." }),
   documents: z.array(z.string()).optional(),
+  userId: z.string().optional(), // Added for server-side association
 });
 
 export const taxRecordWithIdSchema = taxRecordSchema.extend({
@@ -35,6 +36,7 @@ export type TaxRecord = {
   amountEuros: number;
   settledMonths: string[];
   documents?: string[];
+  userId: string;
   createdAt: {
     seconds: number;
     nanoseconds: number;
@@ -69,6 +71,7 @@ export const economicLicenseSchema = z.object({
   
   authorizedActivities: z.array(authorizedActivitySchema).min(1, 'Debe haber al menos un rubro autorizado.'),
   documents: z.array(z.string()).optional(),
+  userId: z.string().optional(), // Added for server-side association
 });
 
 export type EconomicLicenseFormValues = z.infer<typeof economicLicenseSchema>;
@@ -76,6 +79,7 @@ export type AuthorizedActivityFormValues = z.infer<typeof authorizedActivitySche
 
 export type EconomicLicense = EconomicLicenseFormValues & {
   id: string;
+  userId: string;
   createdAt: {
     seconds: number;
     nanoseconds: number;
@@ -83,7 +87,6 @@ export type EconomicLicense = EconomicLicenseFormValues & {
 };
 
 export const settingsSchema = z.object({
-  accessKey: z.string().max(6, 'La clave de acceso no debe exceder los 6 dígitos.').optional().or(z.literal('')),
   logoUrl: z.string().url('URL de logo inválida.').or(z.literal('')).optional(),
 });
 
@@ -91,7 +94,6 @@ export type SettingsFormValues = z.infer<typeof settingsSchema>;
 
 export type Settings = {
   id: string;
-  accessKey?: string;
   logoUrl?: string;
+  userId: string;
 };
-

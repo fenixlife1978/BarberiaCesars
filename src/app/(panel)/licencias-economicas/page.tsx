@@ -3,9 +3,15 @@ import { getEconomicLicenses } from "@/app/actions";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import EconomicLicenseForm from "@/components/license/EconomicLicenseForm";
 import EconomicLicensesTable from "@/components/license/EconomicLicensesTable";
+import { getAuthenticatedUser } from "@/app/auth/get-authenticated-user";
+import { redirect } from 'next/navigation';
 
 export default async function EconomicLicensesPage() {
-  const initialLicenses = await getEconomicLicenses();
+  const user = await getAuthenticatedUser();
+  if (!user) {
+    redirect('/login');
+  }
+  const initialLicenses = await getEconomicLicenses(user.uid);
 
   return (
       <div className="grid grid-cols-1 lg:grid-cols-5 gap-8 items-start">

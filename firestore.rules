@@ -1,130 +1,36 @@
-/**
- * Core Philosophy: This ruleset enforces a strict user-ownership model for the
- * FiscalFlow application. All user-specific data, such as payment records, is
- * accessible only by the authenticated user who created it. The default security
- * posture is deny-all, with access being explicitly granted based on ownership.
- *
- * Data Structure: The data is organized hierarchically to leverage path-based
- * security. All sensitive user data is nested under the `/users/{userId}` path,
- * where `{userId}` is the user's Firebase Authentication UID. This structure
- * naturally isolates each user's data.
- *
- * Key Security Decisions:
- * - User Isolation: A user can only access documents within their own data tree
- *   (i.e., paths starting with `/users/{request.auth.uid}`).
- * - No User Listing: To protect user privacy and prevent data scraping, it is
- *   impossible to list all documents in the top-level `/users` collection.
- * - Ownership Integrity: On creation, documents must contain a field that links
- *   them back to the owner's UID. This field is immutable and must match the
- *   UID in the document path, ensuring data consistency and preventing records
- *   from being re-assigned to other users.
- *
- * Denormalization for Authorization: The security model relies on path-based
- * ownership (`/users/{userId}/...`). This is a powerful form of denormalization
- * where the authorization context (the owner's UID) is embedded directly in the
- * document path. This eliminates the need for slow, costly, and sometimes
- * impossible `get()` or `exists()` calls to other documents to verify permissions,
- * resulting in a highly performant and scalable ruleset.
- *
- * Structural Segregation: User data is structurally segregated into dedicated
- * subcollections (e.g., `paymentRecords`). This ensures that all documents within
- * a given collection path share the same access control requirements, simplifying
- * rule logic and making list operations secure by default.
- */
+
 rules_version = '2';
+
 service cloud.firestore {
   match /databases/{database}/documents {
 
-    // ------------------------------------------------------------------------
-    // Helper Functions
-    // ------------------------------------------------------------------------
-
-    /**
-     * Checks if the user is authenticated.
-     */
+    // Helper functions
     function isSignedIn() {
       return request.auth != null;
     }
 
-    /**
-     * Checks if the requesting user's UID matches the user ID in the path.
-     * This is the primary function for enforcing data ownership.
-     */
     function isOwner(userId) {
       return isSignedIn() && request.auth.uid == userId;
     }
 
-    /**
-     * Checks if the requesting user owns the document and that the document
-     * already exists. This is crucial for safe update and delete operations.
-     */
-    function isExistingOwner(userId) {
-      return isOwner(userId) && resource != null;
-    }
-
-    /**
-     * Validates an incoming User document on creation, ensuring the internal
-     * ID matches the document's path ID for relational integrity.
-     */
-    function hasValidUserCreateData(userId) {
-      return request.resource.data.id == userId;
-    }
-
-    /**
-     * Enforces immutability of the User's internal ID on update.
-     */
-    function hasValidUserUpdateData() {
-      return request.resource.data.id == resource.data.id;
-    }
-
-    /**
-     * Validates an incoming PaymentRecord on creation, ensuring its internal
-     * `userId` field correctly points to the owner defined in the path.
-     */
-    function hasValidPaymentRecordCreateData(userId) {
-      return request.resource.data.userId == userId;
-    }
-
-    /**
-     * Enforces immutability of the PaymentRecord's `userId` ownership link on update.
-     */
-    function hasValidPaymentRecordUpdateData() {
-      return request.resource.data.userId == resource.data.id;
-    }
-
-    // ------------------------------------------------------------------------
-    // Collection Rules
-    // ------------------------------------------------------------------------
-
-    /**
-     * @description Controls access to a user's own profile document.
-     * @path /users/{userId}
-     * @allow (get, update, delete) A signed-in user accessing their own document (e.g., GET /users/abc where auth.uid is 'abc').
-     * @allow (create) A new user creating their own profile document for the first time.
-     * @deny (list) Any user, to prevent enumeration of all application users.
-     * @deny (get) A user trying to read another user's profile (e.g., GET /users/xyz where auth.uid is 'abc').
-     * @principle Restricts access to a user's own data tree and prevents user enumeration.
-     */
+    // Rules for the 'users' collection
     match /users/{userId} {
-      allow get: if isOwner(userId);
-      allow list: if false;
-      allow create: if isOwner(userId) && hasValidUserCreateData(userId);
-      allow update: if isExistingOwner(userId) && hasValidUserUpdateData();
-      allow delete: if isExistingOwner(userId);
+      // Any authenticated user can create their own user document.
+      // No one can see other user's documents.
+      allow create: if isSignedIn() && request.auth.uid == userId;
+      allow read, update, delete: if isOwner(userId);
 
-      /**
-       * @description Controls access to a user's private payment records.
-       * @path /users/{userId}/paymentRecords/{paymentRecordId}
-       * @allow (get, list, create, update, delete) A signed-in user accessing records within their own user path.
-       * @deny (any) Any user trying to access records under another user's path.
-       * @principle Enforces strict data ownership for all operations within a user-specific subcollection.
-       */
-      match /paymentRecords/{paymentRecordId} {
-        allow get: if isOwner(userId);
-        allow list: if isOwner(userId);
-        allow create: if isOwner(userId) && hasValidPaymentRecordCreateData(userId);
-        allow update: if isExistingOwner(userId) && hasValidPaymentRecordUpdateData();
-        allow delete: if isExistingOwner(userId);
+      // Subcollections
+      match /taxRecords/{taxRecordId} {
+        allow read, list, create, update, delete: if isOwner(userId);
+      }
+
+      match /economicLicenses/{licenseId} {
+        allow read, list, create, update, delete: if isOwner(userId);
+      }
+      
+      match /settings/{settingId} {
+         allow read, list, create, update, delete: if isOwner(userId);
       }
     }
   }

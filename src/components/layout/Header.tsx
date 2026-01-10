@@ -6,9 +6,11 @@ import { Sheet, SheetContent, SheetTrigger, SheetTitle, SheetDescription } from 
 import { Menu, Settings, LogOut, Home, FileText, BarChart2 } from 'lucide-react';
 import LogoutButton from './LogoutButton';
 import { getSettings } from '@/app/actions';
+import { getAuthenticatedUser } from '@/app/auth/get-authenticated-user';
 
 export default async function Header() {
-  const settings = await getSettings();
+  const user = await getAuthenticatedUser();
+  const settings = user ? await getSettings(user.uid) : null;
   const logoUrl = settings?.logoUrl || '/logo.png';
 
   return (
@@ -16,10 +18,10 @@ export default async function Header() {
       <div className="container mx-auto flex items-center justify-between h-20 px-4 md:px-8">
         <Link href="/impuestos" className="flex items-center gap-3">
           <div className="relative w-[50px] h-[50px]">
-            <Image src={logoUrl} alt="Barberia Cesar's Logo" fill sizes="50px" className="rounded-full object-cover" />
+            <Image src={logoUrl} alt="FiscalFlow Logo" fill sizes="50px" className="rounded-full object-cover" />
           </div>
           <h1 className="text-2xl md:text-3xl font-bold font-headline tracking-tight hidden sm:block">
-            Barberia Cesar's
+            FiscalFlow
           </h1>
         </Link>
         
