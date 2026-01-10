@@ -2,12 +2,9 @@
 'use server';
 
 import { revalidatePath } from 'next/cache';
-import { db } from '@/lib/firebase';
-import { 
-  addDoc, collection, getDocs, orderBy, query, 
-  serverTimestamp, doc, updateDoc, getDoc, 
-  setDoc, deleteDoc
-} from 'firebase/firestore';
+import { db } from '@/lib/firebase-admin';
+import { getAuthenticatedUser } from './(auth)/get-authenticated-user';
+
 import { 
   taxRecordSchema, 
   type TaxRecord, 
@@ -17,20 +14,28 @@ import {
   settingsSchema, 
   type Settings 
 } from '@/types';
-
-// Se usará este ID de usuario estático para todas las operaciones.
-const STATIC_USER_ID = 'default-user';
+import { FieldValue } from 'firebase-admin/firestore';
 
 // Helper function to serialize data
 const serializeData = (data: any) => JSON.parse(JSON.stringify(data));
 
+// Helper to get user ID
+async function getUserId() {
+  const user = await getAuthenticatedUser();
+  if (!user) {
+    throw new Error('Usuario no autenticado.');
+  }
+  return user.uid;
+}
+
 // --- Tax Records Actions ---
 
 export async function getTaxRecords(): Promise<TaxRecord[]> {
+  const userId = await getUserId();
   try {
-    const recordsCollection = collection(db, 'users', STATIC_USER_ID, 'taxRecords');
-    const q = query(recordsCollection, orderBy('createdAt', 'desc'));
-    const querySnapshot = await getDocs(q);
+    const recordsCollection = db.collection(`users/${userId}/taxRecords`);
+    const q = recordsCollection.orderBy('createdAt', 'desc');
+    const querySnapshot = await q.get();
     const records = querySnapshot.docs.map(doc => ({
       id: doc.id,
       ...doc.data(),
@@ -43,6 +48,7 @@ export async function getTaxRecords(): Promise<TaxRecord[]> {
 }
 
 export async function addTaxRecord(prevState: any, formData: FormData) {
+  const userId = await getUserId();
   const settledMonths = formData.getAll('settledMonths') as string[];
   const documents = formData.getAll('documents').map(d => d.toString());
   
@@ -71,14 +77,14 @@ export async function addTaxRecord(prevState: any, formData: FormData) {
   const calculatedAmountEuros = parseFloat((amountBolivares / bcvRate).toFixed(2));
 
   try {
-    const recordsCollection = collection(db, 'users', STATIC_USER_ID, 'taxRecords');
-    await addDoc(recordsCollection, {
+    const recordsCollection = db.collection(`users/${userId}/taxRecords`);
+    await recordsCollection.add({
       ...rest,
       amountBolivares,
       bcvRate,
       amountEuros: calculatedAmountEuros,
-      createdAt: serverTimestamp(),
-      userId: STATIC_USER_ID,
+      createdAt: FieldValue.serverTimestamp(),
+      userId: userId,
     });
     
     revalidatePath('/impuestos');
@@ -90,6 +96,7 @@ export async function addTaxRecord(prevState: any, formData: FormData) {
 }
 
 export async function updateTaxRecord(prevState: any, formData: FormData) {
+  const userId = await getUserId();
   const settledMonths = formData.getAll('settledMonths') as string[];
   const documents = formData.getAll('documents').map(d => d.toString());
   
@@ -119,8 +126,8 @@ export async function updateTaxRecord(prevState: any, formData: FormData) {
   const calculatedAmountEuros = parseFloat((amountBolivares / bcvRate).toFixed(2));
   
   try {
-    const recordRef = doc(db, 'users', STATIC_USER_ID, 'taxRecords', id);
-    await updateDoc(recordRef, {
+    const recordRef = db.doc(`users/${userId}/taxRecords/${id}`);
+    await recordRef.update({
       ...rest,
       amountBolivares,
       bcvRate,
@@ -135,9 +142,10 @@ export async function updateTaxRecord(prevState: any, formData: FormData) {
 }
 
 export async function deleteTaxRecord(id: string) {
+    const userId = await getUserId();
     try {
-        const recordRef = doc(db, 'users', STATIC_USER_ID, 'taxRecords', id);
-        await deleteDoc(recordRef);
+        const recordRef = db.doc(`users/${userId}/taxRecords/${id}`);
+        await recordRef.delete();
         revalidatePath('/impuestos');
         return { message: 'Registro eliminado con éxito.', status: 'success' };
     } catch (error) {
@@ -149,10 +157,11 @@ export async function deleteTaxRecord(id: string) {
 // --- Economic Licenses Actions ---
 
 export async function getEconomicLicenses(): Promise<EconomicLicense[]> {
+  const userId = await getUserId();
   try {
-    const licensesCollection = collection(db, 'users', STATIC_USER_ID, 'economicLicenses');
-    const q = query(licensesCollection, orderBy('createdAt', 'desc'));
-    const querySnapshot = await getDocs(q);
+    const licensesCollection = db.collection(`users/${userId}/economicLicenses`);
+    const q = licensesCollection.orderBy('createdAt', 'desc');
+    const querySnapshot = await q.get();
     const licenses = querySnapshot.docs.map(doc => ({
       id: doc.id,
       ...doc.data(),
@@ -165,6 +174,7 @@ export async function getEconomicLicenses(): Promise<EconomicLicense[]> {
 }
 
 export async function addEconomicLicense(prevState: any, formData: FormData) {
+  const userId = await getUserId();
   const rawData = Object.fromEntries(formData.entries());
   const authorizedActivities = JSON.parse(rawData.authorizedActivities as string);
   const documents = formData.getAll('documents').map(d => d.toString());
@@ -187,11 +197,11 @@ export async function addEconomicLicense(prevState: any, formData: FormData) {
   }
 
   try {
-    const licensesCollection = collection(db, 'users', STATIC_USER_ID, 'economicLicenses');
-    await addDoc(licensesCollection, {
+    const licensesCollection = db.collection(`users/${userId}/economicLicenses`);
+    await licensesCollection.add({
       ...validatedFields.data,
-      createdAt: serverTimestamp(),
-      userId: STATIC_USER_ID,
+      createdAt: FieldValue.serverTimestamp(),
+      userId: userId,
     });
     revalidatePath('/licencias-economicas');
     return { message: 'Licencia económica agregada con éxito.', status: 'success' };
@@ -202,9 +212,10 @@ export async function addEconomicLicense(prevState: any, formData: FormData) {
 }
 
 export async function deleteEconomicLicense(id: string) {
+    const userId = await getUserId();
     try {
-        const licenseRef = doc(db, 'users', STATIC_USER_ID, 'economicLicenses', id);
-        await deleteDoc(licenseRef);
+        const licenseRef = db.doc(`users/${userId}/economicLicenses/${id}`);
+        await licenseRef.delete();
         revalidatePath('/licencias-economicas');
         return { message: 'Licencia eliminada con éxito.', status: 'success' };
     } catch (error) {
@@ -215,12 +226,12 @@ export async function deleteEconomicLicense(id: string) {
 
 // --- Settings Actions ---
 
-export async function getSettings(): Promise<Settings | null> {
+export async function getSettings(userId: string): Promise<Settings | null> {
   try {
-    const settingsDocRef = doc(db, 'users', STATIC_USER_ID, 'settings', 'general');
-    const settingsDoc = await getDoc(settingsDocRef);
+    const settingsDocRef = db.doc(`users/${userId}/settings/general`);
+    const settingsDoc = await settingsDocRef.get();
 
-    if (!settingsDoc.exists()) {
+    if (!settingsDoc.exists) {
       return null;
     }
     const settingsData = settingsDoc.data();
@@ -232,6 +243,7 @@ export async function getSettings(): Promise<Settings | null> {
 }
 
 export async function updateSettings(prevState: any, formData: FormData) {
+  const userId = await getUserId();
   const rawData = {
     logoUrl: formData.get('logoUrl'),
   };
@@ -247,9 +259,9 @@ export async function updateSettings(prevState: any, formData: FormData) {
   }
 
   try {
-    const settingsRef = doc(db, 'users', STATIC_USER_ID, 'settings', 'general');
+    const settingsRef = db.doc(`users/${userId}/settings/general`);
     
-    await setDoc(settingsRef, {
+    await settingsRef.set({
         logoUrl: validatedFields.data.logoUrl || ""
     }, { merge: true });
 
@@ -262,5 +274,3 @@ export async function updateSettings(prevState: any, formData: FormData) {
     return { message: 'Error al guardar los ajustes.', status: 'error' };
   }
 }
-
-    

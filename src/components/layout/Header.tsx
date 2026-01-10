@@ -3,11 +3,27 @@ import Image from 'next/image';
 import Link from 'next/link';
 import { Button } from '../ui/button';
 import { Sheet, SheetContent, SheetTrigger, SheetTitle, SheetDescription } from '../ui/sheet';
-import { Menu, Settings, Home, FileText, BarChart2 } from 'lucide-react';
+import { Menu, Settings, Home, FileText, BarChart2, LogOut } from 'lucide-react';
 import { getSettings } from '@/app/actions';
+import type { UserRecord } from 'firebase-admin/auth';
+import { logout } from '@/app/(auth)/actions';
 
-export default async function Header() {
-  const settings = await getSettings();
+type HeaderProps = {
+  user: UserRecord | null;
+};
+
+async function LogoutButton() {
+  return (
+    <form action={logout}>
+      <Button type="submit" variant="ghost" className="w-full justify-start">
+        <LogOut className="mr-2"/> Cerrar Sesión
+      </Button>
+    </form>
+  )
+}
+
+export default async function Header({ user }: HeaderProps) {
+  const settings = user ? await getSettings(user.uid) : null;
   const logoUrl = settings?.logoUrl || '/logo.png';
 
   return (
@@ -39,6 +55,11 @@ export default async function Header() {
               Ajustes
             </Link>
           </Button>
+           <form action={logout}>
+             <Button variant="ghost" type="submit">
+                <LogOut className="mr-2"/> Cerrar Sesión
+            </Button>
+          </form>
         </nav>
 
         {/* Mobile Navigation */}
@@ -66,6 +87,7 @@ export default async function Header() {
                 <Button variant="ghost" className="justify-start" asChild>
                     <Link href="/ajustes"><Settings className="mr-2"/> Ajustes</Link>
                 </Button>
+                <LogoutButton />
               </nav>
             </SheetContent>
           </Sheet>

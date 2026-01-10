@@ -1,12 +1,25 @@
-
 rules_version = '2';
 
 service cloud.firestore {
   match /databases/{database}/documents {
-    // For this public app, allow reads and writes to all documents
-    // for any signed-in user.
-    match /{document=**} {
-      allow read, write: if true;
+    // Users can read and write their own user document
+    match /users/{userId} {
+      allow read, write: if request.auth != null && request.auth.uid == userId;
+    }
+    
+    // Users can manage their own tax records
+    match /users/{userId}/taxRecords/{taxRecordId} {
+        allow read, write, create, delete: if request.auth != null && request.auth.uid == userId;
+    }
+
+    // Users can manage their own economic licenses
+    match /users/{userId}/economicLicenses/{licenseId} {
+        allow read, write, create, delete: if request.auth != null && request.auth.uid == userId;
+    }
+
+    // Users can manage their own settings
+    match /users/{userId}/settings/{settingId} {
+        allow read, write: if request.auth != null && request.auth.uid == userId;
     }
   }
 }

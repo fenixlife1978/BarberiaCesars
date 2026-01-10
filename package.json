@@ -44,6 +44,7 @@
     "firebase": "^10.12.2",
     "firebase-admin": "^12.1.1",
     "genkit": "^1.20.0",
+    "js-cookie": "^3.0.5",
     "jspdf": "^2.5.1",
     "jspdf-autotable": "^3.8.2",
     "lucide-react": "^0.475.0",
@@ -59,6 +60,7 @@
     "zod": "^3.24.2"
   },
   "devDependencies": {
+    "@types/js-cookie": "^3.0.6",
     "@types/node": "^20",
     "@types/react": "^19.2.1",
     "@types/react-dom": "^19.2.1",

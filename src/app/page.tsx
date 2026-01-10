@@ -2,5 +2,6 @@
 import { redirect } from 'next/navigation';
 
 export default function HomePage() {
-  redirect('/impuestos');
+  // Always redirect to the login page from the root
+  redirect('/login');
 }
