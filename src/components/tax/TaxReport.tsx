@@ -6,7 +6,7 @@ import { type TaxRecord } from '@/types';
 import { Button } from '@/components/ui/button';
 import { DateRange } from 'react-day-picker';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
-import { Calendar as CalendarIcon, FilterX } from 'lucide-react';
+import { Calendar as CalendarIcon, FilterX, FileDown } from 'lucide-react';
 import { Calendar } from '@/components/ui/calendar';
 import { format, getYear } from 'date-fns';
 import { es } from 'date-fns/locale';
@@ -22,11 +22,19 @@ import {
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { cn } from '@/lib/utils';
 import { months } from '@/types';
+import { jsPDF } from 'jspdf';
+import 'jspdf-autotable';
 
 
 type TaxReportProps = {
   records: TaxRecord[];
 };
+
+declare module 'jspdf' {
+  interface jsPDF {
+    autoTable: (options: any) => jsPDF;
+  }
+}
 
 export default function TaxReport({ records }: TaxReportProps) {
   const [dateRange, setDateRange] = useState<DateRange | undefined>();
@@ -99,10 +107,55 @@ export default function TaxReport({ records }: TaxReportProps) {
     return format(date, 'd MMM yyyy', { locale: es });
   }
 
+  const exportToPDF = () => {
+    const doc = new jsPDF();
+    const tableColumn = ["Fecha", "Descripción", "Nro. Recibo", "Periodo", "Monto (Bs.)", "Tasa BCV", "Monto (€)"];
+    const tableRows: any[][] = [];
+
+    filteredRecords.forEach(record => {
+      const recordData = [
+        formatDate(new Date(record.paymentDate + 'T00:00:00')),
+        record.description,
+        record.receiptNumber,
+        getConsolidatedPeriod(record.settledMonths),
+        formatCurrency(record.amountBolivares),
+        formatCurrency(record.bcvRate),
+        formatCurrency(record.amountEuros)
+      ];
+      tableRows.push(recordData);
+    });
+
+    const totalRow = [
+        { content: 'Totales', colSpan: 4, styles: { halign: 'right', fontStyle: 'bold' } },
+        { content: formatCurrency(totals.bolivares), styles: { halign: 'right', fontStyle: 'bold' } },
+        {},
+        { content: formatCurrency(totals.euros), styles: { halign: 'right', fontStyle: 'bold' } },
+    ];
+    tableRows.push(totalRow);
+
+
+    doc.autoTable({
+        head: [tableColumn],
+        body: tableRows,
+        startY: 20,
+        theme: 'striped',
+        headStyles: { fillColor: [41, 128, 185] },
+        didDrawPage: function (data) {
+            // Header
+            doc.setFontSize(20);
+            doc.setTextColor(40);
+            doc.text("Reporte de Impuestos", 14, 15);
+        }
+    });
+    
+    doc.save("reporte_impuestos.pdf");
+  };
+
+
   return (
     <div className="space-y-6">
       {/* Filters */}
-      <div className="flex flex-col md:flex-row gap-4">
+      <div className="flex flex-col md:flex-row gap-4 items-center">
         <Popover>
             <PopoverTrigger asChild>
                 <Button
@@ -155,6 +208,11 @@ export default function TaxReport({ records }: TaxReportProps) {
         <Button variant="ghost" onClick={clearFilters} className="text-muted-foreground">
           <FilterX className="mr-2 h-4 w-4" />
           Limpiar Filtros
+        </Button>
+
+         <Button onClick={exportToPDF} className="ml-auto bg-accent text-accent-foreground hover:bg-accent/90">
+          <FileDown className="mr-2 h-4 w-4" />
+          Exportar a PDF
         </Button>
       </div>
 

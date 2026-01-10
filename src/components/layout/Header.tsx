@@ -3,14 +3,11 @@ import Image from 'next/image';
 import Link from 'next/link';
 import { Button } from '../ui/button';
 import { Sheet, SheetContent, SheetTrigger, SheetTitle, SheetDescription } from '../ui/sheet';
-import { Menu, Settings, LogOut, Home, FileText, BarChart2 } from 'lucide-react';
-import LogoutButton from './LogoutButton';
+import { Menu, Settings, Home, FileText, BarChart2 } from 'lucide-react';
 import { getSettings } from '@/app/actions';
-import { getAuthenticatedUser } from '@/app/auth/get-authenticated-user';
 
 export default async function Header() {
-  const user = await getAuthenticatedUser();
-  const settings = user ? await getSettings(user.uid) : null;
+  const settings = await getSettings();
   const logoUrl = settings?.logoUrl || '/logo.png';
 
   return (
@@ -42,7 +39,6 @@ export default async function Header() {
               Ajustes
             </Link>
           </Button>
-          <LogoutButton />
         </nav>
 
         {/* Mobile Navigation */}
@@ -70,9 +66,6 @@ export default async function Header() {
                 <Button variant="ghost" className="justify-start" asChild>
                     <Link href="/ajustes"><Settings className="mr-2"/> Ajustes</Link>
                 </Button>
-                <div className="absolute bottom-4 right-4">
-                  <LogoutButton />
-                </div>
               </nav>
             </SheetContent>
           </Sheet>

@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useMemo, useState } from 'react';
@@ -12,26 +13,50 @@ import {
 } from '@/components/ui/table';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
-import { Eye, FilterX, Pencil } from 'lucide-react';
+import { Eye, FilterX, Pencil, Trash2, FileDown } from 'lucide-react';
 import { format } from 'date-fns';
 import { es } from 'date-fns/locale';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '../ui/dialog';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from "@/components/ui/alert-dialog"
 import Image from 'next/image';
 import { Badge } from '../ui/badge';
 import { ScrollArea } from '../ui/scroll-area';
 import TaxForm from './TaxForm';
+import { deleteTaxRecord } from '@/app/actions';
+import { useToast } from '@/hooks/use-toast';
+import { jsPDF } from "jspdf";
+import 'jspdf-autotable';
+
 
 type TaxRecordsTableProps = {
   initialRecords: TaxRecord[];
 };
 
+declare module 'jspdf' {
+  interface jsPDF {
+    autoTable: (options: any) => jsPDF;
+  }
+}
+
 export default function TaxRecordsTable({ initialRecords }: TaxRecordsTableProps) {
   const [dateFilter, setDateFilter] = useState('');
   const [descriptionFilter, setDescriptionFilter] = useState('');
   const [editingRecord, setEditingRecord] = useState<TaxRecord | null>(null);
+  const [records, setRecords] = useState(initialRecords);
+  const { toast } = useToast();
 
   const filteredRecords = useMemo(() => {
-    return initialRecords.filter((record) => {
+    return records.filter((record) => {
       const paymentDate = record.paymentDate || '';
       const description = record.description?.toLowerCase() || '';
 
@@ -42,7 +67,25 @@ export default function TaxRecordsTable({ initialRecords }: TaxRecordsTableProps
       
       return dateMatch && descriptionMatch;
     });
-  }, [initialRecords, dateFilter, descriptionFilter]);
+  }, [records, dateFilter, descriptionFilter]);
+  
+  const handleDelete = async (id: string) => {
+    const result = await deleteTaxRecord(id);
+    if (result.status === 'success') {
+        setRecords(records.filter(r => r.id !== id));
+        toast({
+            title: 'Éxito',
+            description: result.message,
+        });
+    } else {
+        toast({
+            variant: 'destructive',
+            title: 'Error',
+            description: result.message,
+        });
+    }
+  };
+
 
   const clearFilters = () => {
     setDateFilter('');
@@ -63,7 +106,33 @@ export default function TaxRecordsTable({ initialRecords }: TaxRecordsTableProps
 
   const handleEditSuccess = () => {
     setEditingRecord(null);
+    // No need to manually refetch, revalidatePath in server action handles it
   };
+
+  const exportToPDF = (record: TaxRecord) => {
+    const doc = new jsPDF();
+    doc.setFontSize(18);
+    doc.text(`Detalle del Pago de Impuesto`, 14, 22);
+
+    const tableBody = [
+        ['Fecha', formatDate(record.paymentDate)],
+        ['Descripción', record.description],
+        ['Nro. Recibo', record.receiptNumber],
+        ['Monto (Bs.)', formatCurrency(record.amountBolivares)],
+        ['Tasa BCV (€)', formatCurrency(record.bcvRate)],
+        ['Monto (€)', formatCurrency(record.amountEuros)],
+        ['Meses liquidados', record.settledMonths.join(', ')],
+    ];
+
+    doc.autoTable({
+        startY: 30,
+        body: tableBody,
+        theme: 'grid'
+    });
+    
+    doc.save(`pago_impuesto_${record.receiptNumber}.pdf`);
+  };
+
 
   return (
     <div className="space-y-4">
@@ -157,6 +226,28 @@ export default function TaxRecordsTable({ initialRecords }: TaxRecordsTableProps
                       <Button variant="ghost" size="icon" aria-label="Editar registro" onClick={() => setEditingRecord(record)}>
                         <Pencil className="h-4 w-4" />
                       </Button>
+                      <Button variant="ghost" size="icon" aria-label="Exportar a PDF" onClick={() => exportToPDF(record)}>
+                        <FileDown className="h-4 w-4" />
+                      </Button>
+                       <AlertDialog>
+                            <AlertDialogTrigger asChild>
+                                <Button variant="ghost" size="icon" aria-label="Eliminar registro">
+                                    <Trash2 className="h-4 w-4 text-destructive" />
+                                </Button>
+                            </AlertDialogTrigger>
+                            <AlertDialogContent>
+                                <AlertDialogHeader>
+                                <AlertDialogTitle>¿Estás absolutamente seguro?</AlertDialogTitle>
+                                <AlertDialogDescription>
+                                    Esta acción no se puede deshacer. Esto eliminará permanentemente el registro de impuesto.
+                                </AlertDialogDescription>
+                                </AlertDialogHeader>
+                                <AlertDialogFooter>
+                                <AlertDialogCancel>Cancelar</AlertDialogCancel>
+                                <AlertDialogAction onClick={() => handleDelete(record.id)} className="bg-destructive hover:bg-destructive/90">Eliminar</AlertDialogAction>
+                                </AlertDialogFooter>
+                            </AlertDialogContent>
+                        </AlertDialog>
                   </TableCell>
                 </TableRow>
               ))

@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useMemo, useState } from 'react';
@@ -12,7 +13,7 @@ import {
 } from '@/components/ui/table';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
-import { FilterX, Eye } from 'lucide-react';
+import { FilterX, Eye, Trash2, FileDown } from 'lucide-react';
 import { format } from 'date-fns';
 import { es } from 'date-fns/locale';
 import {
@@ -22,18 +23,42 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from "@/components/ui/alert-dialog"
 import { ScrollArea } from '../ui/scroll-area';
 import Image from 'next/image';
+import { useToast } from '@/hooks/use-toast';
+import { deleteEconomicLicense } from '@/app/actions';
+import { jsPDF } from 'jspdf';
+import 'jspdf-autotable';
+
 
 type EconomicLicensesTableProps = {
   initialLicenses: EconomicLicense[];
 };
 
+declare module 'jspdf' {
+  interface jsPDF {
+    autoTable: (options: any) => jsPDF;
+  }
+}
+
 export default function EconomicLicensesTable({ initialLicenses }: EconomicLicensesTableProps) {
   const [filter, setFilter] = useState('');
+  const [licenses, setLicenses] = useState(initialLicenses);
+  const { toast } = useToast();
 
   const filteredLicenses = useMemo(() => {
-    return initialLicenses.filter((license) => {
+    const updatedLicenses = licenses.filter((license) => {
       const searchTerm = filter.toLowerCase();
       return (
         license.taxpayerName?.toLowerCase().includes(searchTerm) ||
@@ -41,7 +66,25 @@ export default function EconomicLicensesTable({ initialLicenses }: EconomicLicen
         license.licenseNumber?.toLowerCase().includes(searchTerm)
       );
     });
-  }, [initialLicenses, filter]);
+    return updatedLicenses;
+  }, [licenses, filter]);
+
+  const handleDelete = async (id: string) => {
+    const result = await deleteEconomicLicense(id);
+    if (result.status === 'success') {
+        setLicenses(licenses.filter(l => l.id !== id));
+        toast({
+            title: 'Éxito',
+            description: result.message,
+        });
+    } else {
+        toast({
+            variant: 'destructive',
+            title: 'Error',
+            description: result.message,
+        });
+    }
+  };
 
   const clearFilters = () => {
     setFilter('');
@@ -58,6 +101,70 @@ export default function EconomicLicensesTable({ initialLicenses }: EconomicLicen
       return "Fecha inválida";
     }
   }
+
+  const exportToPDF = (license: EconomicLicense) => {
+    const doc = new jsPDF();
+    doc.setFontSize(18);
+    doc.text(`Detalles de la Licencia: ${license.licenseNumber}`, 14, 22);
+
+    doc.setFontSize(12);
+    doc.text('Información del Contribuyente', 14, 35);
+    doc.autoTable({
+      startY: 40,
+      body: [
+        ['C.I./RIF', license.taxpayerId],
+        ['Contribuyente', license.taxpayerName],
+        ['Capital', `${formatCurrency(license.capital)} Bs.`],
+        ['Dirección Fiscal', license.fiscalAddress],
+        ['Nro. Catastro', license.cadastreNumber],
+        ['Rep. Legal', license.legalRepresentative],
+        ['C.I. Rep. Legal', license.legalRepresentativeId],
+      ],
+      theme: 'grid',
+      styles: { fontSize: 9 },
+    });
+
+    let finalY = (doc as any).lastAutoTable.finalY;
+    doc.text('Información Propietario del Inmueble', 14, finalY + 10);
+    doc.autoTable({
+        startY: finalY + 15,
+        body: [
+            ['ID Propietario', license.propertyOwnerId],
+            ['Propietario', license.propertyOwnerName],
+            ['C.I./RIF', license.propertyOwnerCiRif],
+            ['ID Inmueble', license.propertyId],
+            ['Nro. Catastro Inmueble', license.propertyCadastreNumber],
+        ],
+        theme: 'grid',
+        styles: { fontSize: 9 },
+    });
+
+    finalY = (doc as any).lastAutoTable.finalY;
+    doc.text('Vigencia de la Licencia', 14, finalY + 10);
+     doc.autoTable({
+        startY: finalY + 15,
+        body: [
+            ['Fecha de Emisión', formatDate(license.issueDate)],
+            ['Fecha de Vencimiento', formatDate(license.expirationDate)],
+        ],
+        theme: 'grid',
+        styles: { fontSize: 9 },
+    });
+
+    finalY = (doc as any).lastAutoTable.finalY;
+    doc.text('Rubros Autorizados', 14, finalY + 10);
+    doc.autoTable({
+      startY: finalY + 15,
+      head: [['Código', 'Descripción', 'Alícuota', 'Mínimo Imputable']],
+      body: license.authorizedActivities.map(act => [act.code, act.description, `${act.aliquot}%`, `${formatCurrency(act.taxableMinimum)} Bs.`]),
+      theme: 'striped',
+      headStyles: { fillColor: [41, 128, 185] },
+      styles: { fontSize: 8 },
+    });
+
+    doc.save(`licencia_${license.licenseNumber}.pdf`);
+  };
+
 
   return (
     <div className="space-y-4">
@@ -180,6 +287,28 @@ export default function EconomicLicensesTable({ initialLicenses }: EconomicLicen
                         </ScrollArea>
                       </DialogContent>
                     </Dialog>
+                     <Button variant="ghost" size="icon" aria-label="Exportar a PDF" onClick={() => exportToPDF(license)}>
+                        <FileDown className="h-4 w-4" />
+                    </Button>
+                    <AlertDialog>
+                        <AlertDialogTrigger asChild>
+                            <Button variant="ghost" size="icon" aria-label="Eliminar licencia">
+                                <Trash2 className="h-4 w-4 text-destructive" />
+                            </Button>
+                        </AlertDialogTrigger>
+                        <AlertDialogContent>
+                            <AlertDialogHeader>
+                            <AlertDialogTitle>¿Estás seguro?</AlertDialogTitle>
+                            <AlertDialogDescription>
+                                Esta acción no se puede deshacer. Se eliminará permanentemente la licencia económica.
+                            </AlertDialogDescription>
+                            </AlertDialogHeader>
+                            <AlertDialogFooter>
+                            <AlertDialogCancel>Cancelar</AlertDialogCancel>
+                            <AlertDialogAction onClick={() => handleDelete(license.id)} className="bg-destructive hover:bg-destructive/90">Eliminar</AlertDialogAction>
+                            </AlertDialogFooter>
+                        </AlertDialogContent>
+                    </AlertDialog>
                   </TableCell>
                 </TableRow>
               ))

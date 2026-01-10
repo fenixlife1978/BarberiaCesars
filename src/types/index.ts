@@ -15,7 +15,7 @@ export const taxRecordSchema = z.object({
   amountEuros: z.coerce.number(),
   settledMonths: z.array(z.string()).min(1, { message: "Debes seleccionar al menos un mes." }),
   documents: z.array(z.string()).optional(),
-  userId: z.string().optional(), // Added for server-side association
+  userId: z.string().optional(),
 });
 
 export const taxRecordWithIdSchema = taxRecordSchema.extend({
@@ -71,7 +71,7 @@ export const economicLicenseSchema = z.object({
   
   authorizedActivities: z.array(authorizedActivitySchema).min(1, 'Debe haber al menos un rubro autorizado.'),
   documents: z.array(z.string()).optional(),
-  userId: z.string().optional(), // Added for server-side association
+  userId: z.string().optional(),
 });
 
 export type EconomicLicenseFormValues = z.infer<typeof economicLicenseSchema>;

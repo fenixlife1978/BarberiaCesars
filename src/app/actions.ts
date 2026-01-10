@@ -1,25 +1,43 @@
-
 'use server';
 
 import { revalidatePath } from 'next/cache';
 import { db } from '@/lib/firebase';
-import { addDoc, collection, getDocs, orderBy, query, serverTimestamp, doc, updateDoc, limit, getDoc } from 'firebase/firestore';
-import { taxRecordSchema, type TaxRecord, economicLicenseSchema, type EconomicLicense, taxRecordWithIdSchema, settingsSchema, type Settings } from '@/types';
-import { getAuthenticatedUser } from './auth/get-authenticated-user';
+import { addDoc, collection, getDocs, orderBy, query, serverTimestamp, doc, updateDoc, getDoc, setDoc, deleteDoc, where } from 'firebase/firestore';
+import { 
+  taxRecordSchema, 
+  type TaxRecord, 
+  economicLicenseSchema, 
+  type EconomicLicense, 
+  taxRecordWithIdSchema, 
+  settingsSchema, 
+  type Settings 
+} from '@/types';
 
-// Función auxiliar para limpiar datos de Firebase (Timestamps, etc)
+const STATIC_USER_ID = 'default-user';
+
+// Ensure the default user document exists
+async function ensureDefaultUser() {
+    const userDocRef = doc(db, 'users', STATIC_USER_ID);
+    const userDoc = await getDoc(userDocRef);
+    if (!userDoc.exists()) {
+        await setDoc(userDocRef, { email: 'default@user.com', id: STATIC_USER_ID });
+    }
+}
+
 const serializeData = (data: any) => JSON.parse(JSON.stringify(data));
 
-export async function getTaxRecords(userId: string): Promise<TaxRecord[]> {
+// Tax Records Actions
+export async function getTaxRecords(): Promise<TaxRecord[]> {
+  await ensureDefaultUser();
   try {
-    const recordsCollection = collection(db, 'users', userId, 'taxRecords');
+    const recordsCollection = collection(db, 'users', STATIC_USER_ID, 'taxRecords');
     const q = query(recordsCollection, orderBy('createdAt', 'desc'));
     const querySnapshot = await getDocs(q);
     const records = querySnapshot.docs.map(doc => ({
       id: doc.id,
       ...doc.data(),
     }));
-    return serializeData(records) as TaxRecord[]; // Limpieza de datos
+    return serializeData(records) as TaxRecord[];
   } catch (error) {
     console.error("Error fetching tax records: ", error);
     return [];
@@ -27,11 +45,7 @@ export async function getTaxRecords(userId: string): Promise<TaxRecord[]> {
 }
 
 export async function addTaxRecord(prevState: any, formData: FormData) {
-  const user = await getAuthenticatedUser();
-  if (!user) {
-    return { message: 'Usuario no autenticado.', status: 'error' };
-  }
-
+  await ensureDefaultUser();
   const settledMonths = formData.getAll('settledMonths') as string[];
   const documents = formData.getAll('documents').map(d => d.toString());
   
@@ -61,14 +75,14 @@ export async function addTaxRecord(prevState: any, formData: FormData) {
 
   let success = false;
   try {
-    const recordsCollection = collection(db, 'users', user.uid, 'taxRecords');
+    const recordsCollection = collection(db, 'users', STATIC_USER_ID, 'taxRecords');
     await addDoc(recordsCollection, {
       ...rest,
       amountBolivares,
       bcvRate,
       amountEuros: calculatedAmountEuros,
       createdAt: serverTimestamp(),
-      userId: user.uid,
+      userId: STATIC_USER_ID,
     });
     success = true;
   } catch (error) {
@@ -83,11 +97,7 @@ export async function addTaxRecord(prevState: any, formData: FormData) {
 }
 
 export async function updateTaxRecord(prevState: any, formData: FormData) {
-  const user = await getAuthenticatedUser();
-  if (!user) {
-    return { message: 'Usuario no autenticado.', status: 'error' };
-  }
-
+  await ensureDefaultUser();
   const settledMonths = formData.getAll('settledMonths') as string[];
   const documents = formData.getAll('documents').map(d => d.toString());
   
@@ -118,7 +128,7 @@ export async function updateTaxRecord(prevState: any, formData: FormData) {
   
   let success = false;
   try {
-    const recordRef = doc(db, 'users', user.uid, 'taxRecords', id);
+    const recordRef = doc(db, 'users', STATIC_USER_ID, 'taxRecords', id);
     await updateDoc(recordRef, {
       ...rest,
       amountBolivares,
@@ -137,9 +147,24 @@ export async function updateTaxRecord(prevState: any, formData: FormData) {
   }
 }
 
-export async function getEconomicLicenses(userId: string): Promise<EconomicLicense[]> {
+export async function deleteTaxRecord(id: string) {
+    await ensureDefaultUser();
+    try {
+        const recordRef = doc(db, 'users', STATIC_USER_ID, 'taxRecords', id);
+        await deleteDoc(recordRef);
+        revalidatePath('/impuestos');
+        return { message: 'Registro eliminado con éxito.', status: 'success' };
+    } catch (error) {
+        console.error("Error deleting document: ", error);
+        return { message: 'Error al eliminar el registro.', status: 'error' };
+    }
+}
+
+// Economic Licenses Actions
+export async function getEconomicLicenses(): Promise<EconomicLicense[]> {
+    await ensureDefaultUser();
   try {
-    const licensesCollection = collection(db, 'users', userId, 'economicLicenses');
+    const licensesCollection = collection(db, 'users', STATIC_USER_ID, 'economicLicenses');
     const q = query(licensesCollection, orderBy('createdAt', 'desc'));
     const querySnapshot = await getDocs(q);
     const licenses = querySnapshot.docs.map(doc => ({
@@ -154,11 +179,7 @@ export async function getEconomicLicenses(userId: string): Promise<EconomicLicen
 }
 
 export async function addEconomicLicense(prevState: any, formData: FormData) {
-  const user = await getAuthenticatedUser();
-  if (!user) {
-    return { message: 'Usuario no autenticado.', status: 'error' };
-  }
-  
+  await ensureDefaultUser();
   const rawData = Object.fromEntries(formData.entries());
   const authorizedActivities = JSON.parse(rawData.authorizedActivities as string);
   const documents = formData.getAll('documents').map(d => d.toString());
@@ -182,11 +203,11 @@ export async function addEconomicLicense(prevState: any, formData: FormData) {
 
   let success = false;
   try {
-    const licensesCollection = collection(db, 'users', user.uid, 'economicLicenses');
+    const licensesCollection = collection(db, 'users', STATIC_USER_ID, 'economicLicenses');
     await addDoc(licensesCollection, {
       ...validatedFields.data,
       createdAt: serverTimestamp(),
-      userId: user.uid,
+      userId: STATIC_USER_ID,
     });
     success = true;
   } catch (error) {
@@ -200,12 +221,25 @@ export async function addEconomicLicense(prevState: any, formData: FormData) {
   }
 }
 
-// Settings Actions
-export async function getSettings(userId: string): Promise<Settings | null> {
-  try {
-    const settingsDocRef = doc(db, 'users', userId, 'settings', 'general');
-    const settingsDoc = await getDoc(settingsDocRef);
+export async function deleteEconomicLicense(id: string) {
+    await ensureDefaultUser();
+    try {
+        const licenseRef = doc(db, 'users', STATIC_USER_ID, 'economicLicenses', id);
+        await deleteDoc(licenseRef);
+        revalidatePath('/licencias-economicas');
+        return { message: 'Licencia eliminada con éxito.', status: 'success' };
+    } catch (error) {
+        console.error("Error deleting license: ", error);
+        return { message: 'Error al eliminar la licencia.', status: 'error' };
+    }
+}
 
+// Settings Actions
+export async function getSettings(): Promise<Settings | null> {
+  await ensureDefaultUser();
+  try {
+    const settingsDocRef = doc(db, 'users', STATIC_USER_ID, 'settings', 'general');
+    const settingsDoc = await getDoc(settingsDocRef);
 
     if (!settingsDoc.exists()) {
       return null;
@@ -219,11 +253,7 @@ export async function getSettings(userId: string): Promise<Settings | null> {
 }
 
 export async function updateSettings(prevState: any, formData: FormData) {
-  const user = await getAuthenticatedUser();
-  if (!user) {
-    return { message: 'Usuario no autenticado.', status: 'error' };
-  }
-
+  await ensureDefaultUser();
   const rawData = {
     logoUrl: formData.get('logoUrl'),
   };
@@ -239,8 +269,8 @@ export async function updateSettings(prevState: any, formData: FormData) {
   }
 
   try {
-    const settingsRef = doc(db, 'users', user.uid, 'settings', 'general');
-    await updateDoc(settingsRef, validatedFields.data);
+    const settingsRef = doc(db, 'users', STATIC_USER_ID, 'settings', 'general');
+    await setDoc(settingsRef, validatedFields.data, { merge: true });
 
     revalidatePath('/ajustes');
     revalidatePath('/(panel)', 'layout'); // To update logo in header

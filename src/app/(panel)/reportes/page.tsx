@@ -2,21 +2,17 @@
 import { getTaxRecords } from "@/app/actions";
 import TaxReport from "@/components/tax/TaxReport";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { getAuthenticatedUser } from "@/app/auth/get-authenticated-user";
-import { redirect } from 'next/navigation';
+import BackButton from "@/components/BackButton";
 
 export default async function ReportesPage() {
-  const user = await getAuthenticatedUser();
-  if (!user) {
-    // This check is redundant due to layout, but good for safety
-    redirect('/login');
-  }
-
-  const rawRecords = await getTaxRecords(user.uid);
+  const rawRecords = await getTaxRecords();
   const records = JSON.parse(JSON.stringify(rawRecords));
 
   return (
-    <div>
+    <div className="space-y-6">
+       <div className="flex justify-start">
+        <BackButton />
+      </div>
       <Card className="shadow-lg">
         <CardHeader>
           <CardTitle className="text-2xl font-headline">Reporte de Impuestos</CardTitle>

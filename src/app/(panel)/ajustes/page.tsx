@@ -2,19 +2,16 @@
 import { getSettings } from "@/app/actions";
 import SettingsForm from "@/components/settings/SettingsForm";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { getAuthenticatedUser } from "@/app/auth/get-authenticated-user";
-import { redirect } from 'next/navigation';
+import BackButton from "@/components/BackButton";
 
 export default async function SettingsPage() {
-  const user = await getAuthenticatedUser();
-  if (!user) {
-    // This check is redundant due to layout, but good for safety
-    redirect('/login');
-  }
-  const settings = await getSettings(user.uid);
+  const settings = await getSettings();
 
   return (
-    <div className="flex justify-center">
+    <div className="flex flex-col items-center gap-6">
+       <div className="w-full max-w-2xl flex justify-start">
+        <BackButton />
+      </div>
       <Card className="w-full max-w-2xl shadow-lg">
         <CardHeader>
           <CardTitle className="text-2xl font-headline">Ajustes Generales</CardTitle>
