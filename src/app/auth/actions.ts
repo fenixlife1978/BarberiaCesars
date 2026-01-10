@@ -12,7 +12,8 @@ export async function login(prevState: any, formData: FormData) {
   
   try {
     const settings = await getSettings();
-    const accessKey = settings?.accessKey || '123456'; // Fallback to default
+    // Si no hay ajustes, se usa '123456'. Si hay ajustes pero no clave, se usa '123456'.
+    const accessKey = settings?.accessKey || '123456'; 
     
     if (pin === accessKey) {
       const cookieStore = cookies();
@@ -28,7 +29,8 @@ export async function login(prevState: any, formData: FormData) {
     }
   } catch (error) {
     console.error("Login error:", error);
-    return { message: 'Ocurrió un error al verificar el PIN.', success: false };
+    // Este error solo debería ocurrir si hay un problema con Firestore, no si los ajustes no existen.
+    return { message: 'Ocurrió un error al verificar el PIN. Revisa la conexión a la base de datos.', success: false };
   }
 }
 
