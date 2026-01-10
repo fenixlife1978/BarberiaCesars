@@ -43,7 +43,7 @@ export default async function ImpuestosPage() {
         <Card className="shadow-lg">
            <CardHeader>
             <CardTitle className="text-2xl font-headline">Historial de Pagos de Impuestos</CardTitle>
-          </Header>
+          </CardHeader>
           <CardContent>
             {/* Pasamos los registros ya serializados para evitar errores de hidratación */}
             <TaxRecordsTable initialRecords={initialRecords} />
