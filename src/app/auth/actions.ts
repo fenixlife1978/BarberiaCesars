@@ -14,41 +14,43 @@ export async function login(prevState: any, formData: FormData) {
   try {
     const settings = await getSettings();
     
-    // Si no hay ajustes en la DB (`settings` es null) o no se ha definido una clave, usamos la lógica de PIN por defecto.
-    if (!settings || !settings.accessKey) {
-        if (accessKey === '123456') {
-             const cookieStore = cookies();
-            cookieStore.set('session', 'true', {
-                httpOnly: true,
-                secure: process.env.NODE_ENV === 'production',
-                maxAge: SESSION_DURATION,
-                path: '/',
-            });
-            redirect('/impuestos');
-        } else {
-            // Si no hay clave en la DB y el PIN no es el de por defecto.
-            return { message: 'La clave de acceso es incorrecta.', success: false };
-        }
-    }
-    
-    // Si hay ajustes y una clave definida, la comparamos.
-    if (accessKey === settings.accessKey) {
-      const cookieStore = cookies();
-      cookieStore.set('session', 'true', {
-        httpOnly: true,
-        secure: process.env.NODE_ENV === 'production',
-        maxAge: SESSION_DURATION,
-        path: '/',
-      });
-      redirect('/impuestos');
+    // Lógica principal de verificación:
+    // 1. Si hay 'settings' en la DB y una 'accessKey' definida:
+    if (settings && settings.accessKey) {
+      if (accessKey === settings.accessKey) {
+        // La clave coincide, creamos la sesión
+        const cookieStore = cookies();
+        cookieStore.set('session', 'true', {
+            httpOnly: true,
+            secure: process.env.NODE_ENV === 'production',
+            maxAge: SESSION_DURATION,
+            path: '/',
+        });
+        redirect('/impuestos');
+      } else {
+        // La clave no coincide
+        return { message: 'La clave de acceso es incorrecta.', success: false };
+      }
     } else {
-      return { message: 'La clave de acceso es incorrecta.', success: false };
+      // 2. Si no hay 'settings' o no hay 'accessKey' definida, usamos la clave por defecto
+      if (accessKey === '123456') {
+        const cookieStore = cookies();
+        cookieStore.set('session', 'true', {
+            httpOnly: true,
+            secure: process.env.NODE_ENV === 'production',
+            maxAge: SESSION_DURATION,
+            path: '/',
+        });
+        redirect('/impuestos');
+      } else {
+        // La clave por defecto no coincide
+        return { message: 'La clave de acceso es incorrecta.', success: false };
+      }
     }
   } catch (error) {
     console.error("Login error:", error);
-    // Este catch es ahora un respaldo para errores inesperados de red o configuración,
-    // pero el flujo principal de "permiso denegado" ya no debería ocurrir aquí.
-    return { message: 'Ocurrió un error inesperado al verificar la clave. Revisa tu conexión a internet.', success: false };
+    // Este catch es para errores inesperados, como problemas de red al contactar Firestore.
+    return { message: 'Ocurrió un error inesperado al verificar la clave. Revisa tu conexión a internet y las reglas de seguridad de Firestore.', success: false };
   }
 }
 
