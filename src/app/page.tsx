@@ -7,7 +7,15 @@ import Link from 'next/link';
 import { Button } from '@/components/ui/button';
 
 export default async function Home() {
-  const initialRecords = await getTaxRecords();
+  // 1. Obtenemos los registros del servidor
+  const rawRecords = await getTaxRecords();
+
+  /**
+   * 2. CORRECCIÓN CLAVE: Serialización
+   * Next.js 15 con Turbopack a veces falla al pasar objetos Date de la DB a componentes.
+   * Al hacer stringify y parse, garantizamos que los datos sean JSON puro.
+   */
+  const initialRecords = JSON.parse(JSON.stringify(rawRecords));
 
   return (
     <div className="min-h-screen flex flex-col">
@@ -24,14 +32,17 @@ export default async function Home() {
               <CardTitle className="text-2xl font-headline">Registrar Nuevo Pago de Impuestos</CardTitle>
             </CardHeader>
             <CardContent>
+              {/* Este formulario gatilla la acción que guarda los datos */}
               <TaxForm />
             </CardContent>
           </Card>
+          
           <Card className="lg:col-span-3 shadow-lg">
              <CardHeader>
               <CardTitle className="text-2xl font-headline">Historial de Pagos de Impuestos</CardTitle>
             </CardHeader>
             <CardContent>
+              {/* Pasamos los registros ya serializados para evitar errores de hidratación */}
               <TaxRecordsTable initialRecords={initialRecords} />
             </CardContent>
           </Card>

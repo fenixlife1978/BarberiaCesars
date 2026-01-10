@@ -3,8 +3,8 @@ import './globals.css';
 import { Toaster } from "@/components/ui/toaster";
 
 export const metadata: Metadata = {
-  title: 'FiscalFlow',
-  description: 'Gestiona tus pagos de impuestos de forma sencilla.',
+  title: "Barberia Cesar's",
+  description: "Tu barbería de confianza.",
 };
 
 export default function RootLayout({

@@ -5,6 +5,9 @@ import { db } from '@/lib/firebase';
 import { addDoc, collection, getDocs, orderBy, query, serverTimestamp, doc, updateDoc } from 'firebase/firestore';
 import { taxRecordSchema, type TaxRecord, economicLicenseSchema, type EconomicLicense, taxRecordWithIdSchema } from '@/types';
 
+// Función auxiliar para limpiar datos de Firebase (Timestamps, etc)
+const serializeData = (data: any) => JSON.parse(JSON.stringify(data));
+
 export async function getTaxRecords(): Promise<TaxRecord[]> {
   try {
     const recordsCollection = collection(db, 'taxRecords');
@@ -13,8 +16,8 @@ export async function getTaxRecords(): Promise<TaxRecord[]> {
     const records = querySnapshot.docs.map(doc => ({
       id: doc.id,
       ...doc.data(),
-    })) as TaxRecord[];
-    return records;
+    }));
+    return serializeData(records) as TaxRecord[]; // Limpieza de datos
   } catch (error) {
     console.error("Error fetching tax records: ", error);
     return [];
@@ -39,7 +42,6 @@ export async function addTaxRecord(prevState: any, formData: FormData) {
   const validatedFields = taxRecordSchema.safeParse(rawFormData);
   
   if (!validatedFields.success) {
-    console.log(validatedFields.error.flatten().fieldErrors);
     return {
       errors: validatedFields.error.flatten().fieldErrors,
       message: 'Faltan campos. No se pudo agregar el registro.',
@@ -50,6 +52,7 @@ export async function addTaxRecord(prevState: any, formData: FormData) {
   const { amountBolivares, bcvRate, ...rest } = validatedFields.data;
   const calculatedAmountEuros = parseFloat((amountBolivares / bcvRate).toFixed(2));
 
+  let success = false;
   try {
     await addDoc(collection(db, 'taxRecords'), {
       ...rest,
@@ -58,12 +61,16 @@ export async function addTaxRecord(prevState: any, formData: FormData) {
       amountEuros: calculatedAmountEuros,
       createdAt: serverTimestamp(),
     });
-
-    revalidatePath('/');
-    return { message: 'Registro de impuesto agregado con éxito.', status: 'success' };
+    success = true;
   } catch (error) {
     console.error("Error adding document: ", error);
     return { message: 'Error al agregar el registro.', status: 'error' };
+  }
+
+  // REVALIDAR FUERA DEL TRY/CATCH
+  if (success) {
+    revalidatePath('/');
+    return { message: 'Registro de impuesto agregado con éxito.', status: 'success' };
   }
 }
 
@@ -96,6 +103,7 @@ export async function updateTaxRecord(prevState: any, formData: FormData) {
   const { id, amountBolivares, bcvRate, ...rest } = validatedFields.data;
   const calculatedAmountEuros = parseFloat((amountBolivares / bcvRate).toFixed(2));
   
+  let success = false;
   try {
     const recordRef = doc(db, 'taxRecords', id);
     await updateDoc(recordRef, {
@@ -104,15 +112,17 @@ export async function updateTaxRecord(prevState: any, formData: FormData) {
       bcvRate,
       amountEuros: calculatedAmountEuros,
     });
-
-    revalidatePath('/');
-    return { message: 'Registro de impuesto actualizado con éxito.', status: 'success' };
+    success = true;
   } catch (error) {
     console.error("Error updating document: ", error);
     return { message: 'Error al actualizar el registro.', status: 'error' };
   }
-}
 
+  if (success) {
+    revalidatePath('/');
+    return { message: 'Registro de impuesto actualizado con éxito.', status: 'success' };
+  }
+}
 
 export async function getEconomicLicenses(): Promise<EconomicLicense[]> {
   try {
@@ -122,8 +132,8 @@ export async function getEconomicLicenses(): Promise<EconomicLicense[]> {
     const licenses = querySnapshot.docs.map(doc => ({
       id: doc.id,
       ...doc.data(),
-    })) as EconomicLicense[];
-    return licenses;
+    }));
+    return serializeData(licenses) as EconomicLicense[];
   } catch (error) {
     console.error("Error fetching economic licenses: ", error);
     return [];
@@ -145,7 +155,6 @@ export async function addEconomicLicense(prevState: any, formData: FormData) {
   const validatedFields = economicLicenseSchema.safeParse(dataToValidate);
 
   if (!validatedFields.success) {
-    console.log(validatedFields.error.flatten().fieldErrors);
     return {
       errors: validatedFields.error.flatten().fieldErrors,
       message: 'Faltan campos o hay errores. No se pudo agregar la licencia.',
@@ -153,16 +162,20 @@ export async function addEconomicLicense(prevState: any, formData: FormData) {
     };
   }
 
+  let success = false;
   try {
     await addDoc(collection(db, 'economicLicenses'), {
       ...validatedFields.data,
       createdAt: serverTimestamp(),
     });
-
-    revalidatePath('/licencias-economicas');
-    return { message: 'Licencia económica agregada con éxito.', status: 'success' };
+    success = true;
   } catch (error) {
     console.error("Error adding license: ", error);
     return { message: 'Error al agregar la licencia.', status: 'error' };
+  }
+
+  if (success) {
+    revalidatePath('/licencias-economicas');
+    return { message: 'Licencia económica agregada con éxito.', status: 'success' };
   }
 }
