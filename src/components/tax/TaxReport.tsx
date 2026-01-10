@@ -21,6 +21,7 @@ import {
 } from '@/components/ui/table';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { cn } from '@/lib/utils';
+import { months } from '@/types';
 
 
 type TaxReportProps = {
@@ -39,6 +40,31 @@ export default function TaxReport({ records }: TaxReportProps) {
     const years = new Set(records.map(r => getYear(new Date(r.paymentDate + 'T00:00:00'))));
     return Array.from(years).sort((a, b) => b - a);
   }, [records]);
+
+  const getConsolidatedPeriod = (settledMonths: string[]): string => {
+    if (!settledMonths || settledMonths.length === 0) {
+      return 'N/A';
+    }
+
+    const sortedMonths = settledMonths.sort((a, b) => {
+      const [monthA, yearA] = a.split('-');
+      const [monthB, yearB] = b.split('-');
+      
+      const dateA = new Date(parseInt(yearA), months.indexOf(monthA));
+      const dateB = new Date(parseInt(yearB), months.indexOf(monthB));
+      
+      return dateA.getTime() - dateB.getTime();
+    });
+
+    const firstMonth = sortedMonths[0];
+    const lastMonth = sortedMonths[sortedMonths.length - 1];
+
+    if (firstMonth === lastMonth) {
+      return firstMonth;
+    }
+
+    return `${firstMonth} - ${lastMonth}`;
+  };
 
 
   const filteredRecords = useMemo(() => {
@@ -140,6 +166,7 @@ export default function TaxReport({ records }: TaxReportProps) {
               <TableHead>Fecha</TableHead>
               <TableHead>Descripción</TableHead>
               <TableHead>Nro. Recibo</TableHead>
+              <TableHead>Periodo Cancelado</TableHead>
               <TableHead className="text-right">Monto (Bs.)</TableHead>
               <TableHead className="text-right">Tasa BCV</TableHead>
               <TableHead className="text-right">Monto (€)</TableHead>
@@ -152,6 +179,7 @@ export default function TaxReport({ records }: TaxReportProps) {
                   <TableCell className='whitespace-nowrap'>{formatDate(new Date(record.paymentDate + 'T00:00:00'))}</TableCell>
                   <TableCell>{record.description}</TableCell>
                   <TableCell>{record.receiptNumber}</TableCell>
+                  <TableCell className='whitespace-nowrap'>{getConsolidatedPeriod(record.settledMonths)}</TableCell>
                   <TableCell className="text-right whitespace-nowrap">{formatCurrency(record.amountBolivares)}</TableCell>
                   <TableCell className="text-right whitespace-nowrap">{formatCurrency(record.bcvRate)}</TableCell>
                   <TableCell className="text-right font-medium whitespace-nowrap">{formatCurrency(record.amountEuros)}</TableCell>
@@ -159,7 +187,7 @@ export default function TaxReport({ records }: TaxReportProps) {
               ))
             ) : (
               <TableRow>
-                <TableCell colSpan={6} className="h-24 text-center">
+                <TableCell colSpan={7} className="h-24 text-center">
                   No se encontraron registros para los filtros aplicados.
                 </TableCell>
               </TableRow>
@@ -167,7 +195,7 @@ export default function TaxReport({ records }: TaxReportProps) {
           </TableBody>
           <TableFooter>
             <TableRow className='bg-muted/50'>
-                <TableCell colSpan={3} className="text-right font-bold text-lg">Totales</TableCell>
+                <TableCell colSpan={4} className="text-right font-bold text-lg">Totales</TableCell>
                 <TableCell className="text-right font-bold text-lg whitespace-nowrap">{formatCurrency(totals.bolivares)}</TableCell>
                 <TableCell></TableCell>
                 <TableCell className="text-right font-bold text-lg whitespace-nowrap">{formatCurrency(totals.euros)}</TableCell>
