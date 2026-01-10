@@ -3,13 +3,13 @@ import Image from 'next/image';
 import Link from 'next/link';
 import { Button } from '../ui/button';
 import { Sheet, SheetContent, SheetTrigger, SheetTitle, SheetDescription } from '../ui/sheet';
-import { Menu, Settings, Home, FileText, BarChart2, LogOut } from 'lucide-react';
+import { Menu, Settings, Home, FileText, BarChart2, LogOut, ShieldCheck } from 'lucide-react';
 import { getSettings } from '@/app/actions';
-import type { UserRecord } from 'firebase-admin/auth';
+import { type AuthenticatedUser } from '@/app/(auth)/get-authenticated-user';
 import { logout } from '@/app/(auth)/actions';
 
 type HeaderProps = {
-  user: UserRecord | null;
+  user: AuthenticatedUser | null;
 };
 
 async function LogoutButton() {
@@ -25,6 +25,7 @@ async function LogoutButton() {
 export default async function Header({ user }: HeaderProps) {
   const settings = user ? await getSettings(user.uid) : null;
   const logoUrl = settings?.logoUrl || '/logo.png';
+  const isAdmin = user?.role === 'admin';
 
   return (
     <header className="bg-primary text-primary-foreground shadow-md sticky top-0 z-40">
@@ -49,6 +50,11 @@ export default async function Header({ user }: HeaderProps) {
           <Button variant="ghost" asChild>
             <Link href="/licencias-economicas">Licencias Económicas</Link>
           </Button>
+          {isAdmin && (
+            <Button variant="ghost" asChild>
+              <Link href="/admin"><ShieldCheck className="mr-2" />Admin</Link>
+            </Button>
+          )}
           <Button variant="ghost" asChild>
             <Link href="/ajustes">
               <Settings className="mr-2" />
@@ -84,6 +90,11 @@ export default async function Header({ user }: HeaderProps) {
                 <Button variant="ghost" className="justify-start" asChild>
                     <Link href="/licencias-economicas"><FileText className="mr-2"/> Licencias</Link>
                 </Button>
+                 {isAdmin && (
+                  <Button variant="ghost" className="justify-start" asChild>
+                    <Link href="/admin"><ShieldCheck className="mr-2" />Admin</Link>
+                  </Button>
+                )}
                 <Button variant="ghost" className="justify-start" asChild>
                     <Link href="/ajustes"><Settings className="mr-2"/> Ajustes</Link>
                 </Button>

@@ -58,10 +58,17 @@ export async function signup(prevState: any, formData: FormData) {
     });
 
     // Create user profile in Firestore
-    await db.collection('users').doc(userRecord.uid).set({
-      email: userRecord.email,
+    const userDoc: { email: string; id: string; role?: string } = {
+      email: userRecord.email!,
       id: userRecord.uid,
-    });
+    };
+    
+    // Assign admin role if email matches
+    if (email === 'vallecondo@gmail.com') {
+      userDoc.role = 'admin';
+    }
+
+    await db.collection('users').doc(userRecord.uid).set(userDoc);
 
   } catch (error: any) {
     if (error.code === 'auth/email-already-exists') {
@@ -72,10 +79,14 @@ export async function signup(prevState: any, formData: FormData) {
 
   // After successful signup, proceed to log in the user
   try {
+    // This is NOT a real password check. In a real app, you'd get an ID token from the client.
     const idToken = await auth.createCustomToken(email);
+    
     const expiresIn = 60 * 60 * 24 * 5 * 1000; // 5 days
     const sessionCookie = await auth.createSessionCookie(idToken, { expiresIn });
+
     cookies().set('__session', sessionCookie, { maxAge: expiresIn, httpOnly: true, secure: true });
+
   } catch (error) {
      return { message: 'Error al iniciar sesión después del registro.', status: 'error' };
   }
@@ -99,7 +110,6 @@ export async function login(prevState: any, formData: FormData) {
     try {
         // We can't verify password directly with firebase-admin.
         // The client will sign in and post the idToken.
-        // This is a placeholder for a real implementation where the client sends the ID token.
         // For this example, we'll create a custom token if the user exists.
         const user = await auth.getUserByEmail(email);
 

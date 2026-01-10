@@ -3,6 +3,9 @@ import { getAuth } from 'firebase-admin/auth';
 import { initializeApp, getApps, App } from 'firebase-admin/app';
 import { firebaseAdminConfig } from '@/firebase/admin-config';
 
+// Force Next.js to use the Node.js runtime
+export const runtime = 'nodejs';
+
 // Initialize Firebase Admin SDK
 let adminApp: App;
 if (!getApps().length) {
