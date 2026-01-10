@@ -4,39 +4,48 @@ import { NextResponse, type NextRequest } from 'next/server';
 const PROTECTED_ROUTES = ['/impuestos', '/licencias-economicas', '/ajustes', '/reportes'];
 const PUBLIC_ROUTES = ['/login', '/signup'];
 
-export async function middleware(request: NextRequest) {
+export function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl;
   const sessionCookie = request.cookies.get('session');
 
   const isProtectedRoute = PROTECTED_ROUTES.some(route => pathname.startsWith(route));
-  
-  // If trying to access a protected route without a session cookie
+
+  // If trying to access a protected route without a session, redirect to login
   if (isProtectedRoute && !sessionCookie) {
     const url = request.nextUrl.clone();
     url.pathname = '/login';
-    url.searchParams.set('redirect', pathname);
     return NextResponse.redirect(url);
   }
-  
-  // If authenticated (has session cookie) and trying to access a public route
+
+  // If authenticated and trying to access a public route, redirect to dashboard
   if (sessionCookie && PUBLIC_ROUTES.includes(pathname)) {
     return NextResponse.redirect(new URL('/impuestos', request.url));
   }
 
-  // If authenticated and accessing the root, redirect to the main panel page
+  // If authenticated and at root, redirect to dashboard
   if (sessionCookie && pathname === '/') {
     return NextResponse.redirect(new URL('/impuestos', request.url));
   }
-
-  // If not authenticated and accessing the root, redirect to login
-  if (!sessionCookie && pathname === '/') {
+  
+  // If not authenticated and at root, redirect to login
+  if(!sessionCookie && pathname === '/'){
     return NextResponse.redirect(new URL('/login', request.url));
   }
-  
+
   return NextResponse.next();
 }
 
-// Match all routes except for static files and API routes
+// See "Matching Paths" below to learn more
 export const config = {
-  matcher: ['/((?!api|_next/static|_next/image|favicon.ico|logo.png).*)'],
+  matcher: [
+    /*
+     * Match all request paths except for the ones starting with:
+     * - api (API routes)
+     * - _next/static (static files)
+     * - _next/image (image optimization files)
+     * - favicon.ico (favicon file)
+     * - logo.png (logo file)
+     */
+    '/((?!api|_next/static|_next/image|favicon.ico|logo.png).*)',
+  ],
 };
