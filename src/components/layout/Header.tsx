@@ -56,7 +56,7 @@ export default function Header() {
           <div className="relative w-[50px] h-[50px]">
             {logoUrl && <Image src={logoUrl} alt="Logo" fill sizes="50px" className="rounded-full object-cover" />}
           </div>
-          <h1 className="text-2xl md:text-3xl font-bold font-headline tracking-tight hidden sm:block">
+          <h1 className="text-2xl md:text-3xl font-bold font-headline tracking-tight">
             {companyName}
           </h1>
         </Link>
