@@ -4,7 +4,7 @@ import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { Button } from '../ui/button';
 import { Sheet, SheetContent, SheetTrigger, SheetTitle, SheetDescription } from '../ui/sheet';
-import { Menu, Settings, Home, FileText, BarChart2, LogOut, ShieldCheck } from 'lucide-react';
+import { Menu, Settings, Home, FileText, BarChart2, LogOut, ShieldCheck, ShoppingCart } from 'lucide-react';
 import { useAuth, useUserRole } from '@/firebase/provider';
 import { getAuth, signOut } from 'firebase/auth';
 import { initializeFirebase } from '@/firebase';
@@ -66,6 +66,9 @@ export default function Header() {
           <Button variant="ghost" asChild>
             <Link href="/impuestos">Pagos de Impuestos</Link>
           </Button>
+          <Button variant="ghost" asChild>
+            <Link href="/gastos-operacion">Gastos de Operación</Link>
+          </Button>
            <Button variant="ghost" asChild>
             <Link href="/reportes">Reportes</Link>
           </Button>
@@ -101,6 +104,9 @@ export default function Header() {
               <nav className="flex flex-col gap-4 mt-8">
                  <Button variant="ghost" className="justify-start" asChild>
                     <Link href="/impuestos"><Home className="mr-2"/> Pagos de Impuestos</Link>
+                </Button>
+                 <Button variant="ghost" className="justify-start" asChild>
+                    <Link href="/gastos-operacion"><ShoppingCart className="mr-2"/> Gastos de Operación</Link>
                 </Button>
                  <Button variant="ghost" className="justify-start" asChild>
                     <Link href="/reportes"><BarChart2 className="mr-2"/> Reportes</Link>

@@ -27,7 +27,7 @@ service cloud.firestore {
       allow write: if request.auth.uid == userId || isSuperAdmin(request.auth.uid);
     }
     
-    // This rule covers all subcollections for a user (taxRecords, economicLicenses, settings)
+    // This rule covers all subcollections for a user (taxRecords, economicLicenses, operatingExpenses, settings)
     match /users/{userId}/{document=**} {
         // Users can manage their own subcollection documents.
         // SuperAdmins can manage any user's subcollection documents.

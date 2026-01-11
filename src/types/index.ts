@@ -91,6 +91,36 @@ export type EconomicLicense = EconomicLicenseFormValues & {
   };
 };
 
+export const operatingExpenseSchema = z.object({
+  date: z.string().min(1, { message: "La fecha es requerida." }),
+  description: z.string().min(3, { message: "La descripción debe tener al menos 3 caracteres." }),
+  category: z.string().min(3, { message: "La categoría debe tener al menos 3 caracteres." }),
+  amount: z.coerce.number().positive({ message: "El monto debe ser un número positivo." }),
+  documents: z.array(z.string()).optional(),
+  userId: z.string().optional(),
+});
+
+export const operatingExpenseWithIdSchema = operatingExpenseSchema.extend({
+  id: z.string().min(1),
+});
+
+export type OperatingExpenseFormValues = z.infer<typeof operatingExpenseSchema>;
+
+export type OperatingExpense = {
+  id: string;
+  date: string;
+  description: string;
+  category: string;
+  amount: number;
+  documents?: string[];
+  userId: string;
+  createdAt: {
+    seconds: number;
+    nanoseconds: number;
+  };
+};
+
+
 export const settingsSchema = z.object({
   companyName: z.string().optional(),
   logoUrl: z.string().url('URL de logo inválida.').or(z.literal('')).optional(),

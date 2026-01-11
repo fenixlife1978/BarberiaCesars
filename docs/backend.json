@@ -55,6 +55,22 @@
       },
       "required": ["id", "taxpayerId", "taxpayerName", "capital", "fiscalAddress", "licenseNumber", "issueDate", "expirationDate", "userId"]
     },
+    "OperatingExpense": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "title": "OperatingExpense",
+      "type": "object",
+      "description": "Represents an operating expense record.",
+      "properties": {
+        "id": { "type": "string" },
+        "date": { "type": "string", "format": "date" },
+        "description": { "type": "string" },
+        "category": { "type": "string" },
+        "amount": { "type": "number" },
+        "documents": { "type": "array", "items": { "type": "string", "format": "uri" } },
+        "userId": { "type": "string", "description": "The UID of the user who owns this record." }
+      },
+      "required": ["id", "date", "description", "category", "amount", "userId"]
+    },
     "Settings": {
         "$schema": "http://json-schema.org/draft-07/schema#",
         "title": "Settings",
@@ -96,6 +112,14 @@
           "entityName": "EconomicLicense",
           "schema": { "$ref": "#/entities/EconomicLicense" },
           "description": "Stores economic licenses for a specific user."
+        }
+      },
+      {
+        "path": "/users/{userId}/operatingExpenses/{expenseId}",
+        "definition": {
+          "entityName": "OperatingExpense",
+          "schema": { "$ref": "#/entities/OperatingExpense" },
+          "description": "Stores operating expenses for a specific user."
         }
       },
       {
