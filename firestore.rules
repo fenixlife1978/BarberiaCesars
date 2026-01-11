@@ -2,37 +2,26 @@ rules_version = '2';
 
 service cloud.firestore {
   match /databases/{database}/documents {
-
-    // A super admin is identified by a custom claim, not by a document read.
-    // This is more secure and efficient.
-    function isSuperAdmin() {
-      return request.auth.token.role == 'super_admin';
-    }
     
-    function isSignedIn() {
-      return request.auth != null;
-    }
-
-    // Rule for the main user document
+    // Users can read and write their own user document.
     match /users/{userId} {
-      // A user can read/write their own profile.
-      // A super admin can read/write any user's profile.
-      allow read, write: if request.auth.uid == userId || isSuperAdmin();
+      allow read, write: if request.auth.uid == userId;
     }
     
-    // Rule for user settings subcollection
+    // Users can read and write to their own settings subcollection.
     match /users/{userId}/settings/{settingId} {
-        // A user can manage their own settings.
-        // A super admin can manage any user's settings.
-        allow read, write: if request.auth.uid == userId || isSuperAdmin();
+      allow read, write: if request.auth.uid == userId;
     }
     
-    // Rule for all other user-specific subcollections
+    // Users can read and write to any other subcollection under their own user document.
     match /users/{userId}/{collection}/{docId} {
-      // This rule should not match 'settings' as it has its own rule.
-      // Users can manage their own documents in their subcollections.
-      // Super admins can manage any user's documents.
-      allow read, write: if collection != 'settings' && (request.auth.uid == userId || isSuperAdmin());
+      allow read, write: if request.auth.uid == userId;
+    }
+
+    // A special rule to allow any authenticated user to read the default user's settings,
+    // which is used for public branding info like the logo on the login page.
+    match /users/default-user/settings/general {
+      allow get: if request.auth != null;
     }
   }
 }
