@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useEffect, useMemo, useRef, useState, useTransition } from 'react';
@@ -56,6 +57,7 @@ export default function EconomicLicenseForm() {
       propertyId: '',
       propertyCadastreNumber: '',
       licenseNumber: '',
+      taxpayerLicenseId: '',
       issueDate: new Date().toISOString().split('T')[0],
       expirationDate: new Date(new Date().setFullYear(new Date().getFullYear() + 1)).toISOString().split('T')[0],
       authorizedActivities: [{ code: '', description: '', aliquot: 0, taxableMinimum: 0 }],
@@ -183,6 +185,9 @@ export default function EconomicLicenseForm() {
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <FormField control={control} name="licenseNumber" render={({ field }) => (
                     <FormItem><FormLabel>Nro. Licencia</FormLabel><FormControl><Input {...field} /></FormControl><FormMessage /></FormItem>
+                )} />
+                 <FormField control={control} name="taxpayerLicenseId" render={({ field }) => (
+                    <FormItem><FormLabel>ID Contribuyente</FormLabel><FormControl><Input {...field} /></FormControl><FormMessage /></FormItem>
                 )} />
                 <FormField control={control} name="issueDate" render={({ field }) => (
                     <FormItem><FormLabel>Fecha de Emisión</FormLabel><FormControl><Input type="date" {...field} /></FormControl><FormMessage /></FormItem>

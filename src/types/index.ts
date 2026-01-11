@@ -66,6 +66,7 @@ export const economicLicenseSchema = z.object({
   propertyCadastreNumber: z.string().min(1, 'Nro. de Catastro del inmueble es requerido.'),
   
   licenseNumber: z.string().min(1, 'El número de licencia es requerido.'),
+  taxpayerLicenseId: z.string().min(1, 'El ID de contribuyente es requerido.'),
   issueDate: z.string().min(1, 'La fecha de emisión es requerida.'),
   expirationDate: z.string().min(1, 'La fecha de vencimiento es requerida.'),
   

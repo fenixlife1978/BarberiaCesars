@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useMemo, useState } from 'react';
@@ -12,7 +13,7 @@ import {
 } from '@/components/ui/table';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
-import { Eye, FilterX, Pencil, Trash2, FileDown, Loader2 } from 'lucide-react';
+import { Eye, FilterX, Pencil, Trash2, FileDown, Loader2, Download } from 'lucide-react';
 import { format } from 'date-fns';
 import { es } from 'date-fns/locale';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '../ui/dialog';
@@ -48,6 +49,41 @@ declare module 'jspdf' {
   interface jsPDF {
     autoTable: (options: any) => jsPDF;
   }
+}
+
+function DocumentPreviewDialog({ src }: { src: string }) {
+    const [open, setOpen] = useState(false);
+
+    const handleDownload = () => {
+        const link = document.createElement('a');
+        link.href = src;
+        link.download = `comprobante-${new Date().toISOString()}.jpg`;
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+    };
+
+    return (
+        <Dialog open={open} onOpenChange={setOpen}>
+            <DialogTrigger asChild>
+                <button className="relative w-full h-full">
+                    <Image src={src} alt="Comprobante" width={200} height={200} className="object-contain rounded-md border w-full h-full" />
+                </button>
+            </DialogTrigger>
+            <DialogContent className="max-w-5xl h-5/6 flex flex-col">
+                <DialogHeader>
+                    <DialogTitle>Vista Previa del Comprobante</DialogTitle>
+                </DialogHeader>
+                <div className="flex-grow relative my-4">
+                    <Image src={src} alt="Vista previa completa" fill style={{ objectFit: 'contain' }} />
+                </div>
+                 <Button onClick={handleDownload} className="self-end">
+                    <Download className="mr-2 h-4 w-4" />
+                    Descargar
+                </Button>
+            </DialogContent>
+        </Dialog>
+    );
 }
 
 export default function TaxRecordsTable({ initialRecords, isLoading }: TaxRecordsTableProps) {
@@ -227,8 +263,8 @@ export default function TaxRecordsTable({ initialRecords, isLoading }: TaxRecord
                                 <strong className="font-medium">Comprobantes:</strong>
                                 <div className="mt-2 grid grid-cols-2 md:grid-cols-3 gap-4">
                                   {record.documents.map((doc, index) => (
-                                      <div key={index} className="relative">
-                                          <Image src={doc} alt={`Comprobante ${index + 1}`} width={200} height={200} className="object-contain rounded-md border" />
+                                      <div key={index} className="relative aspect-square">
+                                          <DocumentPreviewDialog src={doc} />
                                       </div>
                                   ))}
                                 </div>

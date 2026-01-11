@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useMemo, useState } from 'react';
@@ -12,7 +13,7 @@ import {
 } from '@/components/ui/table';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
-import { FilterX, Eye, Trash2, FileDown, Loader2 } from 'lucide-react';
+import { FilterX, Eye, Trash2, FileDown, Loader2, Download } from 'lucide-react';
 import { format } from 'date-fns';
 import { es } from 'date-fns/locale';
 import {
@@ -52,6 +53,41 @@ declare module 'jspdf' {
   interface jsPDF {
     autoTable: (options: any) => jsPDF;
   }
+}
+
+function DocumentPreviewDialog({ src }: { src: string }) {
+    const [open, setOpen] = useState(false);
+
+    const handleDownload = () => {
+        const link = document.createElement('a');
+        link.href = src;
+        link.download = `documento-${new Date().toISOString()}.jpg`;
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+    };
+
+    return (
+        <Dialog open={open} onOpenChange={setOpen}>
+            <DialogTrigger asChild>
+                <button className="relative w-full h-full">
+                    <Image src={src} alt="Documento" width={200} height={200} className="object-contain rounded-md border w-full h-full" />
+                </button>
+            </DialogTrigger>
+            <DialogContent className="max-w-5xl h-5/6 flex flex-col">
+                <DialogHeader>
+                    <DialogTitle>Vista Previa del Documento</DialogTitle>
+                </DialogHeader>
+                <div className="flex-grow relative my-4">
+                    <Image src={src} alt="Vista previa completa" fill style={{ objectFit: 'contain' }} />
+                </div>
+                 <Button onClick={handleDownload} className="self-end">
+                    <Download className="mr-2 h-4 w-4" />
+                    Descargar
+                </Button>
+            </DialogContent>
+        </Dialog>
+    );
 }
 
 export default function EconomicLicensesTable({ initialLicenses, isLoading }: EconomicLicensesTableProps) {
@@ -153,6 +189,7 @@ export default function EconomicLicensesTable({ initialLicenses, isLoading }: Ec
      doc.autoTable({
         startY: finalY + 15,
         body: [
+            ['ID Contribuyente', license.taxpayerLicenseId],
             ['Fecha de Emisión', formatDate(license.issueDate)],
             ['Fecha de Vencimiento', formatDate(license.expirationDate)],
         ],
@@ -254,6 +291,7 @@ export default function EconomicLicensesTable({ initialLicenses, isLoading }: Ec
                              <div>
                                 <h4 className="font-semibold text-primary mb-2">Vigencia de la Licencia</h4>
                                 <div className="grid grid-cols-2 gap-x-4 gap-y-2 text-sm">
+                                    <p><strong className="font-medium">ID Contribuyente:</strong> {license.taxpayerLicenseId}</p>
                                     <p><strong className="font-medium">Fecha de Emisión:</strong> {formatDate(license.issueDate)}</p>
                                     <p><strong className="font-medium">Fecha de Vencimiento:</strong> {formatDate(license.expirationDate)}</p>
                                 </div>
@@ -290,8 +328,8 @@ export default function EconomicLicensesTable({ initialLicenses, isLoading }: Ec
                                     <h4 className="font-semibold text-primary mb-2">Documentos Adjuntos</h4>
                                     <div className="mt-2 grid grid-cols-2 md:grid-cols-3 gap-4">
                                       {license.documents.map((doc, index) => (
-                                          <div key={index} className="relative">
-                                            <Image src={doc} alt={`Documento ${index + 1}`} width={200} height={200} className="object-contain rounded-md border" />
+                                          <div key={index} className="relative aspect-square">
+                                            <DocumentPreviewDialog src={doc} />
                                           </div>
                                       ))}
                                     </div>
