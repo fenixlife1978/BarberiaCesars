@@ -1,61 +1,45 @@
 import { NextResponse } from 'next/server'
 import type { NextRequest } from 'next/server'
 
+// Este middleware es más simple y no intenta verificar la sesión en el servidor.
+// Su principal trabajo es redirigir al usuario si intenta acceder a páginas
+// de autenticación cuando ya tiene una sesión, o a la inversa.
+// La protección real de las rutas la hace el `(panel)/layout.tsx` en el cliente.
 export function middleware(request: NextRequest) {
-  const sessionCookie = request.cookies.get('__session')?.value
-  const { pathname } = request.nextUrl
+  const session = request.cookies.has('__session');
+  const { pathname } = request.nextUrl;
 
-  // Rutas públicas que no requieren autenticación
-  const publicPaths = ['/login', '/signup']
-  const isPublicPath = publicPaths.includes(pathname)
+  const publicPaths = ['/login', '/signup'];
+  const isPublicPath = publicPaths.includes(pathname);
 
-  // Permitir acceso a archivos estáticos y assets públicos sin verificación de cookie
-  if (
-    pathname.startsWith('/_next') ||
-    pathname.includes('/api/') || // Excluir rutas de API
-    pathname.startsWith('/static') ||
-    /\.(.*)$/.test(pathname) // Excluir archivos con extensión (ej. .png, .svg)
-  ) {
-    return NextResponse.next()
+  // Si el usuario tiene una sesión y está en una página pública, redirigir al panel.
+  if (session && isPublicPath) {
+    return NextResponse.redirect(new URL('/impuestos', request.url));
   }
 
-  // Si el usuario tiene sesión...
-  if (sessionCookie) {
-    // ...y está intentando acceder a una ruta pública (login/signup), redirigir al panel.
-    if (isPublicPath) {
-      return NextResponse.redirect(new URL('/impuestos', request.url))
-    }
-  } else {
-    // Si no tiene sesión...
-    // ...y no está en una ruta pública, redirigir al login.
-    if (!isPublicPath) {
-      // Si la ruta raíz es solicitada, redirigir a login
-      if (pathname === '/') {
-        return NextResponse.redirect(new URL('/login', request.url));
-      }
-      // Para cualquier otra ruta protegida, redirigir a login
-      return NextResponse.redirect(new URL('/login', request.url))
-    }
-  }
+  // Si el usuario no tiene sesión y está intentando acceder a una ruta protegida
+  // lo dejamos pasar. El layout del panel se encargará de redirigirlo al login.
+  // Esto previene bucles de redirección si la verificación de la cookie del servidor
+  // y el estado de auth del cliente se desincronizan.
 
-  // Si el usuario está en la página raíz ('/'), decidir a dónde redirigir.
   if (pathname === '/') {
-    return NextResponse.redirect(new URL(sessionCookie ? '/impuestos' : '/login', request.url));
+     return NextResponse.redirect(new URL(session ? '/impuestos' : '/login', request.url));
   }
 
-  return NextResponse.next()
+
+  return NextResponse.next();
 }
 
-// Configuración de paths que serán interceptados por el middleware
 export const config = {
   matcher: [
     /*
-     * Intercepta todas las rutas excepto las que empiezan con:
-     * - api (API routes) -> Ya está cubierto en la lógica del middleware
-     * - _next/static (archivos estáticos)
-     * - _next/image (optimizador de imágenes)
-     * - favicon.ico (favicon)
+     * Match all request paths except for the ones starting with:
+     * - api (API routes)
+     * - _next/static (static files)
+     * - _next/image (image optimization files)
+     * - favicon.ico (favicon file)
+     * - files with extensions (e.g. .png, .svg)
      */
-    '/((?!_next/static|_next/image|favicon.ico).*)',
+    '/((?!api|_next/static|_next/image|favicon.ico|.*\\..*).*)',
   ],
 }

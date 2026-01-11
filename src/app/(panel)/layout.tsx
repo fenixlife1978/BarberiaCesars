@@ -14,11 +14,15 @@ export default function PanelLayout({
   const router = useRouter();
 
   useEffect(() => {
+    // Si el estado de autenticación ha terminado de cargar y el usuario es null,
+    // significa que no está autenticado, así que lo redirigimos a login.
     if (user === null) {
-      router.push('/login');
+      router.replace('/login');
     }
   }, [user, router]);
   
+  // Mientras user es `undefined`, significa que Firebase está comprobando el estado de autenticación.
+  // Mostramos un loader para mejorar la experiencia de usuario.
   if (user === undefined) {
     return (
         <div className="flex justify-center items-center min-h-screen">
@@ -27,6 +31,7 @@ export default function PanelLayout({
     )
   }
 
+  // Si el usuario está autenticado (no es undefined ni null), mostramos el layout del panel.
   if (user) {
       return (
         <div className="min-h-screen flex flex-col">
@@ -38,5 +43,7 @@ export default function PanelLayout({
       );
   }
 
+  // Si user es null (y ya se ejecutó el useEffect), no se renderiza nada aquí
+  // porque la redirección ya está en marcha.
   return null;
 }

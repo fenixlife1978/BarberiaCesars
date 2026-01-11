@@ -58,7 +58,8 @@ export default function SignupForm() {
             
             await setDoc(doc(firestore, "users", user.uid), userDocData);
 
-            router.push('/impuestos');
+            // La redirección la maneja el PanelLayout
+            // router.push('/impuestos');
 
         } catch (e) {
             const error = e as AuthError;

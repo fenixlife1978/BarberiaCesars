@@ -35,7 +35,8 @@ export default function LoginForm() {
     try {
       const { auth } = initializeFirebase();
       await signInWithEmailAndPassword(auth, email, password);
-      router.push('/impuestos');
+      // La redirección es manejada por el PanelLayout al detectar el cambio de estado de autenticación.
+      // router.push('/impuestos');
     } catch (e) {
       const error = e as AuthError;
       let errorMessage = 'Error al iniciar sesión. Por favor, inténtalo de nuevo.';
