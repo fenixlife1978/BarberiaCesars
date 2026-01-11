@@ -18,6 +18,7 @@ import { processImage } from '@/lib/image-utils';
 import { useAuth, useUserRole } from '@/firebase/provider';
 import { addDoc, collection, doc, serverTimestamp, updateDoc } from 'firebase/firestore';
 import { initializeFirebase } from '@/firebase';
+import { addDocumentNonBlocking, updateDocumentNonBlocking } from '@/firebase/non-blocking-updates';
 
 function SubmitButton({ isPending, isEditMode }: { isPending: boolean, isEditMode: boolean }) {
   return (
@@ -92,7 +93,7 @@ export default function EconomicLicenseForm({ isEditMode = false, initialData, o
     },
   });
   
-  const { control, setValue, handleSubmit } = form;
+  const { control, setValue, handleSubmit, reset } = form;
 
   const { fields, append, remove } = useFieldArray({
     control,
@@ -131,21 +132,21 @@ export default function EconomicLicenseForm({ isEditMode = false, initialData, o
     }
     const { firestore } = initializeFirebase();
 
-    startTransition(async () => {
+    startTransition(() => {
         try {
             if (isEditMode && initialData?.id) {
                 const licenseRef = doc(firestore, `users/${userIdToUse}/economicLicenses`, initialData.id);
-                await updateDoc(licenseRef, values);
+                updateDocumentNonBlocking(licenseRef, values);
                 toast({title: 'Éxito', description: 'Licencia económica actualizada con éxito.'});
             } else {
                 const licensesCollection = collection(firestore, `users/${userIdToUse}/economicLicenses`);
-                await addDoc(licensesCollection, {
+                addDocumentNonBlocking(licensesCollection, {
                     ...values,
                     createdAt: serverTimestamp(),
                     userId: userIdToUse,
                 });
                 toast({title: 'Éxito', description: 'Licencia económica agregada con éxito.'});
-                form.reset();
+                reset();
                 setPreviews([]);
             }
             if(onSuccess) onSuccess();

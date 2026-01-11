@@ -15,6 +15,7 @@ import { processImage } from '@/lib/image-utils';
 import { useAuth, useUserRole } from '@/firebase/provider';
 import { doc, setDoc } from 'firebase/firestore';
 import { initializeFirebase } from '@/firebase';
+import { setDocumentNonBlocking } from '@/firebase/non-blocking-updates';
 
 function SubmitButton({ isPending }: { isPending: boolean }) {
   return (
@@ -50,7 +51,7 @@ export default function SettingsForm({ initialSettings }: SettingsFormProps) {
     },
   });
 
-  const { setValue, handleSubmit } = form;
+  const { setValue, handleSubmit, control } = form;
   
   const handleLogoChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -81,10 +82,10 @@ export default function SettingsForm({ initialSettings }: SettingsFormProps) {
         return;
     }
     const { firestore } = initializeFirebase();
-    startTransition(async () => {
+    startTransition(() => {
         try {
             const settingsRef = doc(firestore, `users/${userIdToUse}/settings/general`);
-            await setDoc(settingsRef, {
+            setDocumentNonBlocking(settingsRef, {
                 companyName: values.companyName || "",
                 logoUrl: values.logoUrl || ""
             }, { merge: true });
@@ -99,7 +100,7 @@ export default function SettingsForm({ initialSettings }: SettingsFormProps) {
     <Form {...form}>
       <form ref={formRef} onSubmit={handleSubmit(onSubmit)} className="space-y-8">
         <FormField
-            control={form.control}
+            control={control}
             name="companyName"
             render={({ field }) => (
                 <FormItem>
@@ -138,7 +139,7 @@ export default function SettingsForm({ initialSettings }: SettingsFormProps) {
                     <span>Sube un archivo</span>
                     <Input id="logo-input" type="file" className="sr-only" accept="image/jpeg,image/png" onChange={handleLogoChange} />
                   </Label>
-                  <p className="pl-1">o arrástralo aquí</p>
+                  <p className="pl-1">o arrástralos aquí</p>
                 </div>
                  <p className="text-xs leading-5 text-muted-foreground">PNG, JPG hasta 10MB</p>
               </div>
@@ -146,7 +147,7 @@ export default function SettingsForm({ initialSettings }: SettingsFormProps) {
           </div>
         </div>
          <FormField
-            control={form.control}
+            control={control}
             name="logoUrl"
             render={({ field }) => (
               <FormItem className='hidden'>

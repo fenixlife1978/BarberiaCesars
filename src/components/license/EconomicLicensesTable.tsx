@@ -43,6 +43,7 @@ import { jsPDF } from 'jspdf';
 import 'jspdf-autotable';
 import EconomicLicenseForm from './EconomicLicenseForm';
 import { useDoc } from '@/firebase/firestore/use-doc';
+import { deleteDocumentNonBlocking } from '@/firebase/non-blocking-updates';
 
 
 type EconomicLicensesTableProps = {
@@ -129,7 +130,7 @@ export default function EconomicLicensesTable({ initialLicenses, isLoading }: Ec
     
     const licenseRef = doc(firestore, `users/${userIdToUse}/economicLicenses`, id);
     try {
-        await deleteDoc(licenseRef);
+        deleteDocumentNonBlocking(licenseRef);
         toast({
             title: 'Éxito',
             description: 'Licencia eliminada con éxito.',

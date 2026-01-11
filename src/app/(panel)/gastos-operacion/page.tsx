@@ -25,7 +25,7 @@ export default function OperatingExpensesPage() {
   
   const expensesQuery = useMemo(() => {
     if (!expensesRef) return null;
-    return query(expensesRef, orderBy('createdAt', 'desc'));
+    return query(expensesRef, orderBy('date', 'desc'));
   }, [expensesRef]);
 
   const { data: initialExpenses, isLoading } = useCollection(expensesQuery);

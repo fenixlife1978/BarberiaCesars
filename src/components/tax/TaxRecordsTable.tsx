@@ -38,6 +38,7 @@ import { useAuth, useUserRole } from '@/firebase/provider';
 import { initializeFirebase } from '@/firebase';
 import { doc, deleteDoc } from 'firebase/firestore';
 import { useDoc } from '@/firebase/firestore/use-doc';
+import { deleteDocumentNonBlocking } from '@/firebase/non-blocking-updates';
 
 
 type TaxRecordsTableProps = {
@@ -129,7 +130,7 @@ export default function TaxRecordsTable({ initialRecords, isLoading }: TaxRecord
     const recordRef = doc(firestore, `users/${userIdToUse}/taxRecords`, id);
 
     try {
-        await deleteDoc(recordRef);
+        deleteDocumentNonBlocking(recordRef);
         toast({
             title: 'Éxito',
             description: 'Registro eliminado con éxito.',

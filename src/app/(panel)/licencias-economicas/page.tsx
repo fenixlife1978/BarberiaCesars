@@ -25,7 +25,7 @@ export default function EconomicLicensesPage() {
   
   const licensesQuery = useMemo(() => {
     if (!licensesRef) return null;
-    return query(licensesRef, orderBy('createdAt', 'desc'));
+    return query(licensesRef, orderBy('issueDate', 'desc'));
   }, [licensesRef]);
 
   const { data: initialLicenses, isLoading } = useCollection(licensesQuery);

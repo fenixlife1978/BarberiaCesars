@@ -41,6 +41,7 @@ import { initializeFirebase } from '@/firebase';
 import { doc, deleteDoc } from 'firebase/firestore';
 import OperatingExpenseForm from './OperatingExpenseForm';
 import { Badge } from '../ui/badge';
+import { deleteDocumentNonBlocking } from '@/firebase/non-blocking-updates';
 
 
 type OperatingExpensesTableProps = {
@@ -111,7 +112,7 @@ export default function OperatingExpensesTable({ initialExpenses, isLoading }: O
     const { firestore } = initializeFirebase();
     const expenseRef = doc(firestore, `users/${userIdToUse}/operatingExpenses`, id);
     try {
-        await deleteDoc(expenseRef);
+        deleteDocumentNonBlocking(expenseRef);
         toast({
             title: 'Éxito',
             description: 'Gasto eliminado con éxito.',

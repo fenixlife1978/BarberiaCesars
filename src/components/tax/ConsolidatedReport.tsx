@@ -53,7 +53,11 @@ export default function ConsolidatedReport({ taxRecords, operatingExpenses }: Co
       ...taxRecords.map(r => getYear(parse(r.paymentDate, 'yyyy-MM-dd', new Date()))),
       ...operatingExpenses.map(e => getYear(parse(e.date, 'yyyy-MM-dd', new Date()))),
     ]);
-    return Array.from(years).sort((a, b) => b - a).map(String);
+    const sortedYears = Array.from(years).sort((a, b) => b - a).map(String);
+    if (!sortedYears.includes(new Date().getFullYear().toString())) {
+      sortedYears.unshift(new Date().getFullYear().toString());
+    }
+    return sortedYears;
   }, [taxRecords, operatingExpenses]);
   
   if (availableYears.length > 0 && !availableYears.includes(selectedYear)) {

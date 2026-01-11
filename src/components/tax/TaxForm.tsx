@@ -23,6 +23,7 @@ import { processImage } from '@/lib/image-utils';
 import { Checkbox } from '../ui/checkbox';
 import { useAuth, useUserRole } from '@/firebase/provider';
 import { initializeFirebase } from '@/firebase';
+import { addDocumentNonBlocking, updateDocumentNonBlocking } from '@/firebase/non-blocking-updates';
 
 function SubmitButton({ isPending, isEditMode }: { isPending: boolean, isEditMode: boolean }) {
   return (
@@ -76,7 +77,7 @@ export default function TaxForm({ isEditMode = false, initialData, onSuccess }: 
     },
   });
 
-  const { watch, setValue, control, register, handleSubmit } = form;
+  const { watch, setValue, control, register, handleSubmit, reset } = form;
   const amountBolivares = watch('amountBolivares');
   const bcvRate = watch('bcvRate');
 
@@ -127,21 +128,31 @@ export default function TaxForm({ isEditMode = false, initialData, onSuccess }: 
       category: 'Impuestos', // Always ensure category is set
     };
 
-    startTransition(async () => {
+    startTransition(() => {
         try {
             if (isEditMode && initialData?.id) {
                  const recordRef = doc(firestore, `users/${userIdToUse}/taxRecords`, initialData.id);
-                 await updateDoc(recordRef, dataToSave);
+                 updateDocumentNonBlocking(recordRef, dataToSave);
                  toast({title: 'Éxito', description: 'Registro actualizado con éxito.'});
             } else {
                 const recordsCollection = collection(firestore, `users/${userIdToUse}/taxRecords`);
-                await addDoc(recordsCollection, {
+                addDocumentNonBlocking(recordsCollection, {
                     ...dataToSave,
                     createdAt: serverTimestamp(),
                     userId: userIdToUse,
                 });
                 toast({title: 'Éxito', description: 'Registro agregado con éxito.'});
-                form.reset();
+                reset({
+                  paymentDate: new Date().toISOString().split('T')[0],
+                  description: '',
+                  receiptNumber: '',
+                  amountBolivares: 0,
+                  bcvRate: 0,
+                  amountEuros: 0,
+                  settledMonths: [],
+                  documents: [],
+                  category: 'Impuestos',
+                });
                 setPreviews([]);
                 setSelectedYear(currentYear);
             }

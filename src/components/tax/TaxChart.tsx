@@ -14,7 +14,7 @@ type TaxChartProps = {
 
 const chartConfig = {
   total: {
-    label: "Total",
+    label: "Total (€)",
     color: "hsl(var(--primary))",
   },
 };

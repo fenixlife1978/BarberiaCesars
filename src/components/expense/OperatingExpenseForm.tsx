@@ -18,6 +18,7 @@ import { useAuth, useUserRole } from '@/firebase/provider';
 import { addDoc, collection, doc, serverTimestamp, updateDoc } from 'firebase/firestore';
 import { initializeFirebase } from '@/firebase';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../ui/select';
+import { addDocumentNonBlocking, updateDocumentNonBlocking } from '@/firebase/non-blocking-updates';
 
 function SubmitButton({ isPending, isEditMode }: { isPending: boolean, isEditMode: boolean }) {
   return (
@@ -65,7 +66,7 @@ export default function OperatingExpenseForm({ isEditMode = false, initialData, 
     },
   });
   
-  const { control, setValue, handleSubmit, watch, register, trigger, resetField } = form;
+  const { control, setValue, handleSubmit, watch, register, trigger, reset, resetField } = form;
 
   const amountBolivares = watch('amountBolivares');
   const bcvRate = watch('bcvRate');
@@ -132,21 +133,21 @@ export default function OperatingExpenseForm({ isEditMode = false, initialData, 
     }
     const { firestore } = initializeFirebase();
 
-    startTransition(async () => {
+    startTransition(() => {
         try {
             if (isEditMode && initialData?.id) {
                 const expenseRef = doc(firestore, `users/${userIdToUse}/operatingExpenses`, initialData.id);
-                await updateDoc(expenseRef, { ...values });
+                updateDocumentNonBlocking(expenseRef, { ...values });
                 toast({title: 'Éxito', description: 'Gasto actualizado con éxito.'});
             } else {
                 const expensesCollection = collection(firestore, `users/${userIdToUse}/operatingExpenses`);
-                await addDoc(expensesCollection, {
+                addDocumentNonBlocking(expensesCollection, {
                     ...values,
                     createdAt: serverTimestamp(),
                     userId: userIdToUse,
                 });
                 toast({title: 'Éxito', description: 'Gasto agregado con éxito.'});
-                form.reset({
+                reset({
                   date: new Date().toISOString().split('T')[0],
                   description: '',
                   category: undefined,

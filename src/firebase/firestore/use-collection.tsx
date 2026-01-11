@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect, useMemo, DependencyList } from 'react';
 import {
   Query,
   onSnapshot,
@@ -46,12 +46,7 @@ export interface InternalQuery extends Query<DocumentData> {
  */
 export function useMemoizedQuery(createQuery: () => Query<DocumentData> | CollectionReference<DocumentData> | null, deps: React.DependencyList) {
   const query = useMemo(() => {
-    const q = createQuery();
-    if (q) {
-      // Mark the query object to indicate it's memoized
-      (q as any).__memo = true;
-    }
-    return q;
+    return createQuery();
   }, deps);
   return query;
 }
@@ -78,6 +73,8 @@ export function useCollection<T = any>(
   const [data, setData] = useState<StateDataType>(null);
   const [isLoading, setIsLoading] = useState<boolean>(true);
   const [error, setError] = useState<FirestoreError | Error | null>(null);
+
+  const queryKey = targetRefOrQuery ? (targetRefOrQuery as any)._query?.path.toString() : null;
 
   useEffect(() => {
     if (!targetRefOrQuery) {
@@ -121,7 +118,7 @@ export function useCollection<T = any>(
     );
 
     return () => unsubscribe();
-  }, [targetRefOrQuery]);
+  }, [queryKey]);
   
   return { data, isLoading, error };
 }

@@ -26,7 +26,7 @@ export default function ImpuestosPage() {
   
   const recordsQuery = useMemo(() => {
     if (!recordsRef) return null;
-    return query(recordsRef, orderBy('createdAt', 'desc'));
+    return query(recordsRef, orderBy('paymentDate', 'desc'));
   }, [recordsRef]);
 
   const { data: initialRecords, isLoading } = useCollection(recordsQuery);
