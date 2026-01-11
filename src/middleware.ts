@@ -5,48 +5,58 @@ export function middleware(request: NextRequest) {
   const sessionCookie = request.cookies.get('__session')?.value
   const { pathname } = request.nextUrl
 
-  const publicPaths = ['/login', '/signup']
+  // Rutas públicas que no requieren autenticación
+  const publicPaths = ['/login', '/signup', '/manifest.json', '/sw.js']
   const isPublicPath = publicPaths.includes(pathname)
-  
-  // Allow static files and specific public assets to pass through
-  if (pathname.startsWith('/_next') || pathname.endsWith('.png') || pathname.endsWith('.ico') || pathname.endsWith('.svg')) {
+
+  // Permitir acceso a archivos estáticos y assets públicos
+  if (
+    pathname.startsWith('/_next') ||
+    pathname.endsWith('.png') ||
+    pathname.endsWith('.jpg') ||
+    pathname.endsWith('.jpeg') ||
+    pathname.endsWith('.ico') ||
+    pathname.endsWith('.svg') ||
+    pathname.endsWith('.webp') ||
+    pathname === '/manifest.json' ||
+    pathname === '/sw.js'
+  ) {
     return NextResponse.next()
   }
 
-  // If the user has a session cookie
+  // Si el usuario tiene sesión
   if (sessionCookie) {
-    // If they are trying to access a public page like /login, redirect them to the main app page
+    // Evitar que acceda a /login o /signup estando logueado
     if (isPublicPath) {
       return NextResponse.redirect(new URL('/impuestos', request.url))
     }
   } else {
-    // If the user does not have a session and is trying to access a protected page
+    // Si no tiene sesión y quiere acceder a una ruta protegida
     if (!isPublicPath) {
-       // Redirect to login, but preserve the original path as a query param
-       const loginUrl = new URL('/login', request.url)
-       loginUrl.searchParams.set('redirect', pathname)
-       return NextResponse.redirect(loginUrl)
+      const loginUrl = new URL('/login', request.url)
+      loginUrl.searchParams.set('redirect', pathname)
+      return NextResponse.redirect(loginUrl)
     }
   }
 
-  // If it's the root path, redirect based on auth status
+  // Redirección en la raíz según estado de sesión
   if (pathname === '/') {
-      const targetUrl = sessionCookie ? '/impuestos' : '/login'
-      return NextResponse.redirect(new URL(targetUrl, request.url))
+    const targetUrl = sessionCookie ? '/impuestos' : '/login'
+    return NextResponse.redirect(new URL(targetUrl, request.url))
   }
 
   return NextResponse.next()
 }
 
-// See "Matching Paths" below to learn more
+// Configuración de paths que serán interceptados por el middleware
 export const config = {
   matcher: [
     /*
-     * Match all request paths except for the ones starting with:
+     * Intercepta todas las rutas excepto las que empiezan con:
      * - api (API routes)
-     * - _next/static (static files)
-     * - _next/image (image optimization files)
-     * - favicon.ico (favicon file)
+     * - _next/static (archivos estáticos)
+     * - _next/image (optimizador de imágenes)
+     * - favicon.ico (favicon)
      */
     '/((?!api|_next/static|_next/image|favicon.ico).*)',
   ],
