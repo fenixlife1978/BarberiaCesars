@@ -4,7 +4,10 @@ import { Toaster } from '@/components/ui/toaster';
 import { FirebaseProvider } from '@/firebase/provider';
 
 export const metadata = {
-  title: 'FiscalFlow',
+  title: {
+    default: "Gestor Fiscal",
+    template: "%s | Gestor Fiscal",
+  },
   description: 'Gestión fiscal simplificada.',
 };
 

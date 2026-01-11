@@ -46,7 +46,7 @@ export default function Header() {
   const { data: settings } = useDoc(settingsRef);
 
   const logoUrl = settings?.logoUrl || '/logo.png';
-  const companyName = settings?.companyName || 'FiscalFlow';
+  const companyName = settings?.companyName || 'Mi Empresa';
   const isAdmin = userRole === 'super_admin';
 
   return (
@@ -56,7 +56,7 @@ export default function Header() {
           <div className="relative w-[50px] h-[50px]">
             {logoUrl && <Image src={logoUrl} alt="Logo" fill sizes="50px" className="rounded-full object-cover" />}
           </div>
-          <h1 className="text-2xl md:text-3xl font-bold font-headline tracking-tight">
+          <h1 className="text-2xl font-bold font-headline tracking-tight">
             {companyName}
           </h1>
         </Link>

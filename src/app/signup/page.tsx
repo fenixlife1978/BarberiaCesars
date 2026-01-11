@@ -6,7 +6,7 @@ export default function SignupPage() {
     <main className="flex min-h-screen flex-col items-center justify-center bg-background p-8">
       <div className="w-full max-w-md">
         <h1 className="mb-8 text-center text-4xl font-bold text-primary">
-          Crea tu cuenta en FiscalFlow
+          Crea tu cuenta
         </h1>
         <SignupForm />
       </div>
