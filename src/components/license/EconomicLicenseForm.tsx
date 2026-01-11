@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useRef, useState, useTransition } from 'react';
+import { useEffect, useMemo, useRef, useState, useTransition } from 'react';
 import { useForm, useFieldArray } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import Image from 'next/image';
@@ -14,7 +14,7 @@ import { UploadCloud, Loader2, PlusCircle, X } from 'lucide-react';
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '../ui/form';
 import { Separator } from '../ui/separator';
 import { processImage } from '@/lib/image-utils';
-import { useAuth } from '@/firebase/provider';
+import { useAuth, useUserRole } from '@/firebase/provider';
 import { addDoc, collection, serverTimestamp } from 'firebase/firestore';
 import { initializeFirebase } from '@/firebase';
 
@@ -33,6 +33,12 @@ export default function EconomicLicenseForm() {
   const formRef = useRef<HTMLFormElement>(null);
   const [previews, setPreviews] = useState<string[]>([]);
   const user = useAuth();
+  const userRole = useUserRole();
+
+  const userIdToUse = useMemo(() => {
+    if (!user) return null;
+    return userRole === 'super_admin' ? 'default-user' : user.uid;
+  }, [user, userRole]);
 
   const form = useForm<EconomicLicenseFormValues>({
     resolver: zodResolver(economicLicenseSchema),
@@ -90,7 +96,7 @@ export default function EconomicLicenseForm() {
   };
 
   const onSubmit = (values: EconomicLicenseFormValues) => {
-    if (!user) {
+    if (!userIdToUse) {
         toast({variant: 'destructive', title: 'Error', description: 'Debes iniciar sesión.'});
         return;
     }
@@ -98,11 +104,11 @@ export default function EconomicLicenseForm() {
 
     startTransition(async () => {
         try {
-            const licensesCollection = collection(firestore, `users/${user.uid}/economicLicenses`);
+            const licensesCollection = collection(firestore, `users/${userIdToUse}/economicLicenses`);
             await addDoc(licensesCollection, {
                 ...values,
                 createdAt: serverTimestamp(),
-                userId: user.uid,
+                userId: userIdToUse,
             });
             toast({title: 'Éxito', description: 'Licencia económica agregada con éxito.'});
             form.reset();

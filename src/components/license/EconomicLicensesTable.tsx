@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useMemo, useState } from 'react';
@@ -37,7 +36,7 @@ import {
 import { ScrollArea } from '../ui/scroll-area';
 import Image from 'next/image';
 import { useToast } from '@/hooks/use-toast';
-import { useAuth } from '@/firebase/provider';
+import { useAuth, useUserRole } from '@/firebase/provider';
 import { initializeFirebase } from '@/firebase';
 import { doc, deleteDoc } from 'firebase/firestore';
 import { jsPDF } from 'jspdf';
@@ -59,6 +58,12 @@ export default function EconomicLicensesTable({ initialLicenses, isLoading }: Ec
   const [filter, setFilter] = useState('');
   const { toast } = useToast();
   const user = useAuth();
+  const userRole = useUserRole();
+
+  const userIdToUse = useMemo(() => {
+    if (!user) return null;
+    return userRole === 'super_admin' ? 'default-user' : user.uid;
+  }, [user, userRole]);
 
   const filteredLicenses = useMemo(() => {
     return (initialLicenses || []).filter((license) => {
@@ -72,9 +77,9 @@ export default function EconomicLicensesTable({ initialLicenses, isLoading }: Ec
   }, [initialLicenses, filter]);
 
   const handleDelete = async (id: string) => {
-    if (!user) return;
+    if (!userIdToUse) return;
     const { firestore } = initializeFirebase();
-    const licenseRef = doc(firestore, `users/${user.uid}/economicLicenses`, id);
+    const licenseRef = doc(firestore, `users/${userIdToUse}/economicLicenses`, id);
     try {
         await deleteDoc(licenseRef);
         toast({

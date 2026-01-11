@@ -1,4 +1,3 @@
-
 'use client';
 import Image from 'next/image';
 import Link from 'next/link';
@@ -33,11 +32,16 @@ export default function Header() {
   const user = useAuth();
   const userRole = useUserRole();
   const { firestore } = initializeFirebase();
+
+  const userIdToQuery = useMemo(() => {
+    if (!user) return null;
+    return userRole === 'super_admin' ? 'default-user' : user.uid;
+  }, [user, userRole]);
   
   const settingsRef = useMemo(() => {
-    if (!user) return null;
-    return doc(firestore, `users/${user.uid}/settings/general`);
-  }, [user, firestore]);
+    if (!userIdToQuery) return null;
+    return doc(firestore, `users/${userIdToQuery}/settings/general`);
+  }, [userIdToQuery, firestore]);
 
   const { data: settings } = useDoc(settingsRef);
 

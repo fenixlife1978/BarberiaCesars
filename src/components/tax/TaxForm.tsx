@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useRef, useState, useTransition } from 'react';
+import { useEffect, useMemo, useRef, useState, useTransition } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import Image from 'next/image';
@@ -21,7 +21,7 @@ import { UploadCloud, Loader2, ChevronLeft, ChevronRight, X } from 'lucide-react
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '../ui/form';
 import { processImage } from '@/lib/image-utils';
 import { Checkbox } from '../ui/checkbox';
-import { useAuth } from '@/firebase/provider';
+import { useAuth, useUserRole } from '@/firebase/provider';
 import { initializeFirebase } from '@/firebase';
 
 function SubmitButton({ isPending, isEditMode }: { isPending: boolean, isEditMode: boolean }) {
@@ -45,6 +45,12 @@ export default function TaxForm({ isEditMode = false, initialData, onSuccess }: 
   const formRef = useRef<HTMLFormElement>(null);
   const [previews, setPreviews] = useState<string[]>(initialData?.documents || []);
   const user = useAuth();
+  const userRole = useUserRole();
+
+  const userIdToUse = useMemo(() => {
+    if (!user) return null;
+    return userRole === 'super_admin' ? 'default-user' : user.uid;
+  }, [user, userRole]);
 
   const currentYear = new Date().getFullYear();
   const [selectedYear, setSelectedYear] = useState(
@@ -108,7 +114,7 @@ export default function TaxForm({ isEditMode = false, initialData, onSuccess }: 
   };
   
   const onSubmit = (values: TaxRecordFormValues) => {
-    if (!user) {
+    if (!userIdToUse) {
         toast({variant: 'destructive', title: 'Error', description: 'Debes iniciar sesión.'});
         return;
     }
@@ -117,15 +123,15 @@ export default function TaxForm({ isEditMode = false, initialData, onSuccess }: 
     startTransition(async () => {
         try {
             if (isEditMode && initialData?.id) {
-                 const recordRef = doc(firestore, `users/${user.uid}/taxRecords`, initialData.id);
+                 const recordRef = doc(firestore, `users/${userIdToUse}/taxRecords`, initialData.id);
                  await updateDoc(recordRef, values);
                  toast({title: 'Éxito', description: 'Registro actualizado con éxito.'});
             } else {
-                const recordsCollection = collection(firestore, `users/${user.uid}/taxRecords`);
+                const recordsCollection = collection(firestore, `users/${userIdToUse}/taxRecords`);
                 await addDoc(recordsCollection, {
                     ...values,
                     createdAt: serverTimestamp(),
-                    userId: user.uid,
+                    userId: userIdToUse,
                 });
                 toast({title: 'Éxito', description: 'Registro agregado con éxito.'});
                 form.reset();

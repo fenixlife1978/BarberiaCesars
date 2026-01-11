@@ -4,19 +4,25 @@ import { useCollection } from "@/firebase/firestore/use-collection";
 import TaxRecordsTable from "@/components/tax/TaxRecordsTable";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import TaxChart from "@/components/tax/TaxChart";
-import { useAuth } from "@/firebase/provider";
+import { useAuth, useUserRole } from "@/firebase/provider";
 import { useMemo } from "react";
 import { collection, query, orderBy } from "firebase/firestore";
 import { initializeFirebase } from "@/firebase";
 
 export default function ImpuestosPage() {
   const user = useAuth();
+  const userRole = useUserRole();
   const { firestore } = initializeFirebase();
 
-  const recordsRef = useMemo(() => {
+  const userIdToQuery = useMemo(() => {
     if (!user) return null;
-    return collection(firestore, `users/${user.uid}/taxRecords`);
-  }, [user, firestore]);
+    return userRole === 'super_admin' ? 'default-user' : user.uid;
+  }, [user, userRole]);
+
+  const recordsRef = useMemo(() => {
+    if (!userIdToQuery) return null;
+    return collection(firestore, `users/${userIdToQuery}/taxRecords`);
+  }, [userIdToQuery, firestore]);
   
   const recordsQuery = useMemo(() => {
     if (!recordsRef) return null;

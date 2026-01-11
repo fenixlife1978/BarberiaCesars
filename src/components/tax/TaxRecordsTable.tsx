@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useMemo, useState } from 'react';
@@ -35,7 +34,7 @@ import TaxForm from './TaxForm';
 import { useToast } from '@/hooks/use-toast';
 import { jsPDF } from "jspdf";
 import 'jspdf-autotable';
-import { useAuth } from '@/firebase/provider';
+import { useAuth, useUserRole } from '@/firebase/provider';
 import { initializeFirebase } from '@/firebase';
 import { doc, deleteDoc } from 'firebase/firestore';
 
@@ -57,6 +56,12 @@ export default function TaxRecordsTable({ initialRecords, isLoading }: TaxRecord
   const [editingRecord, setEditingRecord] = useState<TaxRecord | null>(null);
   const { toast } = useToast();
   const user = useAuth();
+  const userRole = useUserRole();
+
+  const userIdToUse = useMemo(() => {
+    if (!user) return null;
+    return userRole === 'super_admin' ? 'default-user' : user.uid;
+  }, [user, userRole]);
 
   const filteredRecords = useMemo(() => {
     return (initialRecords || []).filter((record) => {
@@ -73,9 +78,9 @@ export default function TaxRecordsTable({ initialRecords, isLoading }: TaxRecord
   }, [initialRecords, dateFilter, descriptionFilter]);
   
   const handleDelete = async (id: string) => {
-    if (!user) return;
+    if (!userIdToUse) return;
     const { firestore } = initializeFirebase();
-    const recordRef = doc(firestore, `users/${user.uid}/taxRecords`, id);
+    const recordRef = doc(firestore, `users/${userIdToUse}/taxRecords`, id);
 
     try {
         await deleteDoc(recordRef);

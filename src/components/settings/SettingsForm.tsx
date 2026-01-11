@@ -1,7 +1,6 @@
-
 'use client';
 
-import { useRef, useState, useTransition } from 'react';
+import { useMemo, useRef, useState, useTransition } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { settingsSchema, type Settings, type SettingsFormValues } from '@/types';
@@ -13,7 +12,7 @@ import { useToast } from '@/hooks/use-toast';
 import { Loader2, UploadCloud, X } from 'lucide-react';
 import Image from 'next/image';
 import { processImage } from '@/lib/image-utils';
-import { useAuth } from '@/firebase/provider';
+import { useAuth, useUserRole } from '@/firebase/provider';
 import { doc, setDoc } from 'firebase/firestore';
 import { initializeFirebase } from '@/firebase';
 
@@ -36,6 +35,12 @@ export default function SettingsForm({ initialSettings }: SettingsFormProps) {
   const formRef = useRef<HTMLFormElement>(null);
   const [logoPreview, setLogoPreview] = useState<string | null>(initialSettings?.logoUrl || null);
   const user = useAuth();
+  const userRole = useUserRole();
+
+  const userIdToUse = useMemo(() => {
+    if (!user) return null;
+    return userRole === 'super_admin' ? 'default-user' : user.uid;
+  }, [user, userRole]);
 
   const form = useForm<SettingsFormValues>({
     resolver: zodResolver(settingsSchema),
@@ -70,14 +75,14 @@ export default function SettingsForm({ initialSettings }: SettingsFormProps) {
   }
 
   const onSubmit = (values: SettingsFormValues) => {
-    if (!user) {
+    if (!userIdToUse) {
         toast({variant: 'destructive', title: 'Error', description: 'Debes iniciar sesión.'});
         return;
     }
     const { firestore } = initializeFirebase();
     startTransition(async () => {
         try {
-            const settingsRef = doc(firestore, `users/${user.uid}/settings/general`);
+            const settingsRef = doc(firestore, `users/${userIdToUse}/settings/general`);
             await setDoc(settingsRef, {
                 logoUrl: values.logoUrl || ""
             }, { merge: true });
