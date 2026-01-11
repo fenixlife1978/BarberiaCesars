@@ -1,15 +1,12 @@
 
+'use client';
+
 import Image from 'next/image';
 import LoginForm from './login-form';
-import { getSettings } from '@/app/actions';
 
-
-export default async function LoginPage() {
-  // Fetch settings from the 'default-user' which holds global app settings
-  const settings = await getSettings('default-user');
-  
-  const logoUrl = settings?.logoUrl || '/logo.png';
-  const companyName = settings?.companyName || "Barbería Cesar's";
+export default function LoginPage() {
+  const logoUrl = '/logo.png'; // Puedes cambiar esto a la URL de tu logo si la subes a /public
+  const companyName = "Barbería Cesar's";
 
   return (
     <main className="flex min-h-screen flex-col items-center justify-center bg-background p-8">
@@ -27,5 +24,3 @@ export default async function LoginPage() {
     </main>
   );
 }
-
-
