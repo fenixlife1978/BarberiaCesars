@@ -1,67 +1,54 @@
-// Define a unique cache name for this version of your app
-const CACHE_NAME = 'cesars-barberia-cache-v1';
+// This is the service worker with the combined offline experience (Offline page + Offline copy of pages)
 
-// List all the assets that need to be cached
-const urlsToCache = [
-  '/',
-  '/login',
-  '/impuestos',
-  // Note: Add paths to your key static assets here.
-  // Be careful not to cache everything, especially large files or API calls.
-  // The manifest and icons are good candidates.
-  '/manifest.json',
-  '/logo-192.png',
-  '/logo-512.png',
-  '/logo.png'
-];
+const CACHE = "pwabuilder-offline-page";
 
-// Install event: fires when the service worker is first installed.
-self.addEventListener('install', (event) => {
-  // Perform install steps
+importScripts('https://storage.googleapis.com/workbox-cdn/releases/5.1.2/workbox-sw.js');
+
+// TODO: replace the following with the correct offline fallback page i.e.: const offlineFallbackPage = "offline.html";
+const offlineFallbackPage = "ToDo-replace-this-name.html";
+
+self.addEventListener("message", (event) => {
+  if (event.data && event.data.type === "SKIP_WAITING") {
+    self.skipWaiting();
+  }
+});
+
+self.addEventListener('install', async (event) => {
   event.waitUntil(
-    caches.open(CACHE_NAME)
-      .then((cache) => {
-        console.log('Opened cache');
-        // Add all the assets to the cache
-        return cache.addAll(urlsToCache);
-      })
-      .catch(err => {
-        console.error('Failed to open cache', err);
-      })
+    caches.open(CACHE)
+      .then((cache) => cache.add(offlineFallbackPage))
   );
 });
 
-// Fetch event: fires for every network request.
+if (workbox.navigationPreload.isSupported()) {
+  workbox.navigationPreload.enable();
+}
+
+workbox.routing.registerRoute(
+  new RegExp('/*'),
+  new workbox.strategies.StaleWhileRevalidate({
+    cacheName: CACHE
+  })
+);
+
 self.addEventListener('fetch', (event) => {
-  event.respondWith(
-    caches.match(event.request)
-      .then((response) => {
-        // Cache hit - return response from the cache
-        if (response) {
-          return response;
+  if (event.request.mode === 'navigate') {
+    event.respondWith((async () => {
+      try {
+        const preloadResp = await event.preloadResponse;
+
+        if (preloadResp) {
+          return preloadResp;
         }
 
-        // Not in cache - fetch from the network
-        return fetch(event.request);
-      })
-  );
-});
+        const networkResp = await fetch(event.request);
+        return networkResp;
+      } catch (error) {
 
-// Activate event: fires when the service worker is activated.
-// This is a good place to clean up old caches.
-self.addEventListener('activate', (event) => {
-  const cacheWhitelist = [CACHE_NAME];
-
-  event.waitUntil(
-    caches.keys().then((cacheNames) => {
-      return Promise.all(
-        cacheNames.map((cacheName) => {
-          if (cacheWhitelist.indexOf(cacheName) === -1) {
-            // If this cache name is not in our whitelist, delete it.
-            return caches.delete(cacheName);
-          }
-        })
-      );
-    })
-  );
+        const cache = await caches.open(CACHE);
+        const cachedResp = await cache.match(offlineFallbackPage);
+        return cachedResp;
+      }
+    })());
+  }
 });
