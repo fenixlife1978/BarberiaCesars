@@ -1,18 +1,20 @@
 import { initializeApp, getApps, App, applicationDefault } from 'firebase-admin/app';
-import { getFirestore } from 'firebase-admin/firestore';
-import { config } from 'dotenv';
 
-config(); // Carga las variables de entorno desde .env
+// This file is intended for server-side logic (e.g., API routes, server functions).
+// It should NOT be imported into client-side components.
 
 let adminApp: App;
 
-// Las variables de entorno para la configuración de Admin SDK
-// (FIREBASE_PROJECT_ID, FIREBASE_CLIENT_EMAIL, FIREBASE_PRIVATE_KEY)
-// son leídas automáticamente por `applicationDefault()` en muchos entornos.
-// Si se ejecuta localmente, se deben tener seteadas en el entorno o en el .env
+// The Firebase Admin SDK needs specific environment variables to be set:
+// - GOOGLE_APPLICATION_CREDENTIALS (path to your service account JSON file)
+// OR
+// - FIREBASE_CONFIG (a JSON string of the service account config)
+// In many hosting environments (like Cloud Run, Cloud Functions), this is handled automatically.
+// For local development, you need to set up a service account.
 
 try {
   if (!getApps().length) {
+    // initializeApp will automatically look for credentials in the environment
     adminApp = initializeApp({
       credential: applicationDefault(),
     });
@@ -20,14 +22,14 @@ try {
     adminApp = getApps()[0];
   }
 } catch(e: any) {
-    console.error("Error inicializando Firebase Admin SDK. Asegúrate de que las variables de entorno FIREBASE_PROJECT_ID, FIREBASE_CLIENT_EMAIL y FIREBASE_PRIVATE_KEY están configuradas.", e.message);
-    // En un caso real, podrías querer que la app falle si el SDK de admin es crucial.
-    // Para este contexto, la dejamos en un estado no inicializado si falla.
+    // This error is expected if the environment isn't set up for Admin SDK.
+    // It's not a critical failure unless a server-side function tries to use it.
+    console.log("Firebase Admin SDK not initialized. This is okay for client-side rendering, but server functions requiring admin access will fail.");
     // @ts-ignore
     adminApp = null;
 }
 
-
-const db = adminApp ? getFirestore(adminApp) : null;
-
-export { adminApp, db };
+// We do not export 'db' from here to prevent accidental client-side imports.
+// Server-side files should import getFirestore from 'firebase-admin/firestore'
+// and pass the adminApp instance themselves.
+export { adminApp };
