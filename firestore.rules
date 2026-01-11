@@ -3,25 +3,35 @@ rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
     
-    // Users can read and write their own user document.
-    match /users/{userId} {
-      allow read, write: if request.auth.uid == userId;
+    // Function to check if the user is the owner of the document
+    function isOwner(userId) {
+      return request.auth.uid == userId;
     }
     
-    // Users can read and write to their own settings subcollection.
-    match /users/{userId}/settings/{settingId} {
-      allow read, write: if request.auth.uid == userId;
-    }
-    
-    // Users can read and write to any other subcollection under their own user document.
-    match /users/{userId}/{collection}/{docId} {
-      allow read, write: if request.auth.uid == userId;
+    // Function to check if the user has the 'super_admin' custom claim
+    function isSuperAdmin() {
+      return request.auth.token.role == 'super_admin';
     }
 
-    // A special rule to allow any authenticated user to read the default user's settings,
-    // which is used for public branding info like the logo on the login page.
+    // Rule for user documents
+    match /users/{userId} {
+      allow read, write: if isOwner(userId) || isSuperAdmin();
+    }
+    
+    // Rule for the general settings of the default user (e.g., logo on login page)
     match /users/default-user/settings/general {
-      allow get: if request.auth != null;
+      allow get: if request.auth != null; // Any authenticated user can read branding
+      allow write: if isSuperAdmin(); // Only super admins can change branding
+    }
+    
+    // Rule for any user's settings
+    match /users/{userId}/settings/{settingId} {
+       allow read, write: if isOwner(userId) || isSuperAdmin();
+    }
+    
+    // Rule for all other subcollections (taxRecords, operatingExpenses, etc.)
+    match /users/{userId}/{collection}/{docId} {
+      allow read, write: if isOwner(userId) || isSuperAdmin();
     }
   }
 }

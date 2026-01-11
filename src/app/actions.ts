@@ -17,7 +17,3 @@ export async function setSuperAdminClaim(uid: string) {
         throw new Error('Failed to set custom claim.');
     }
 }
-
-// Keep the file but export an empty object if no other actions are present.
-// This preserves the file for future server actions.
-export {};
