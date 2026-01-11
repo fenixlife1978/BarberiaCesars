@@ -3,12 +3,30 @@ import './globals.css';
 import { Toaster } from '@/components/ui/toaster';
 import { FirebaseProvider } from '@/firebase/provider';
 
-export const metadata = {
+export const metadata: Metadata = {
   title: {
-    default: "Gestor Fiscal",
-    template: "%s | Gestor Fiscal",
+    default: "Barbería César's",
+    template: "%s | Barbería César's",
   },
   description: 'Gestión fiscal simplificada.',
+  icons: {
+    icon: '/logo.png', // favicon en public/logo.png
+  },
+  openGraph: {
+    title: "Barbería César's",
+    description: "Gestión fiscal simplificada.",
+    url: "https://barberia-impuestos.vercel.app/",
+    siteName: "Barbería César's",
+    images: [
+      {
+        url: "/logo.png", // imagen en public/logo.png
+        width: 800,
+        height: 600,
+        alt: "Logo Barbería César's",
+      },
+    ],
+    type: "website",
+  },
 };
 
 export default function RootLayout({
