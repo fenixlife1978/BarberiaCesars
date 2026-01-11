@@ -133,8 +133,8 @@ export default function OperatingExpensesTable({ initialExpenses, isLoading }: O
     setFilter('');
   };
   
-  const formatCurrency = (amount: number) => {
-    return new Intl.NumberFormat('de-DE', { style: 'currency', currency: 'EUR' }).format(amount);
+  const formatCurrency = (amount: number, currency = 'EUR') => {
+    return new Intl.NumberFormat('de-DE', { style: 'currency', currency }).format(amount);
   }
   
   const formatDate = (dateString: string) => {
@@ -166,7 +166,7 @@ export default function OperatingExpensesTable({ initialExpenses, isLoading }: O
               <TableHead>Fecha</TableHead>
               <TableHead>Descripción</TableHead>
               <TableHead>Categoría</TableHead>
-              <TableHead className="text-right">Monto</TableHead>
+              <TableHead className="text-right">Monto (€)</TableHead>
               <TableHead className="text-center">Acciones</TableHead>
             </TableRow>
           </TableHeader>
@@ -183,7 +183,7 @@ export default function OperatingExpensesTable({ initialExpenses, isLoading }: O
                   <TableCell className="font-medium whitespace-nowrap">{formatDate(expense.date)}</TableCell>
                   <TableCell>{expense.description}</TableCell>
                   <TableCell><Badge variant="secondary">{expense.category}</Badge></TableCell>
-                  <TableCell className="text-right font-medium whitespace-nowrap">{formatCurrency(expense.amount)}</TableCell>
+                  <TableCell className="text-right font-medium whitespace-nowrap">{formatCurrency(expense.amountEuros)}</TableCell>
                   <TableCell className="text-center">
                     <Dialog>
                       <DialogTrigger asChild>
@@ -200,7 +200,9 @@ export default function OperatingExpensesTable({ initialExpenses, isLoading }: O
                             <p><strong className="font-medium text-muted-foreground">Fecha:</strong> {formatDate(expense.date)}</p>
                             <p><strong className="font-medium text-muted-foreground">Descripción:</strong> {expense.description}</p>
                             <p><strong className="font-medium text-muted-foreground">Categoría:</strong> <Badge variant="outline">{expense.category}</Badge></p>
-                            <p><strong className="font-medium text-muted-foreground">Monto:</strong> {formatCurrency(expense.amount)}</p>
+                            <p><strong className="font-medium text-muted-foreground">Monto (Bs.):</strong> {formatCurrency(expense.amountBolivares, 'VES')}</p>
+                            <p><strong className="font-medium text-muted-foreground">Tasa BCV:</strong> {formatCurrency(expense.bcvRate, 'VES')}</p>
+                            <p><strong className="font-medium text-muted-foreground">Monto (€):</strong> {formatCurrency(expense.amountEuros, 'EUR')}</p>
 
                             {expense.documents && expense.documents.length > 0 && (
                                 <div>

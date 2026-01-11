@@ -1,6 +1,6 @@
 'use client';
 
-import { useMemo, useRef, useState, useTransition } from 'react';
+import { useEffect, useMemo, useRef, useState, useTransition } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import Image from 'next/image';
@@ -55,12 +55,26 @@ export default function OperatingExpenseForm({ isEditMode = false, initialData, 
       date: new Date().toISOString().split('T')[0],
       description: '',
       category: '',
-      amount: 0,
+      amountBolivares: 0,
+      bcvRate: 0,
+      amountEuros: 0,
       documents: [],
     },
   });
   
-  const { control, setValue, handleSubmit } = form;
+  const { control, setValue, handleSubmit, watch, register } = form;
+
+  const amountBolivares = watch('amountBolivares');
+  const bcvRate = watch('bcvRate');
+
+  useEffect(() => {
+    if (amountBolivares > 0 && bcvRate > 0) {
+      const amountEuros = amountBolivares / bcvRate;
+      setValue('amountEuros', parseFloat(amountEuros.toFixed(2)));
+    } else if (!isEditMode) {
+      setValue('amountEuros', 0);
+    }
+  }, [amountBolivares, bcvRate, setValue, isEditMode]);
 
   const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = e.target.files;
@@ -130,9 +144,19 @@ export default function OperatingExpenseForm({ isEditMode = false, initialData, 
         <FormField control={control} name="category" render={({ field }) => (
           <FormItem><FormLabel>Categoría</FormLabel><FormControl><Input placeholder="Ej: Proveedores" {...field} /></FormControl><FormMessage /></FormItem>
         )} />
-        <FormField control={control} name="amount" render={({ field }) => (
-          <FormItem><FormLabel>Monto (Euros)</FormLabel><FormControl><Input type="number" step="0.01" {...field} onChange={(e) => field.onChange(parseFloat(e.target.value) || 0)} /></FormControl><FormMessage /></FormItem>
-        )} />
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <FormField control={control} name="amountBolivares" render={({ field }) => (
+            <FormItem><FormLabel>Monto en Bolívares</FormLabel><FormControl><Input type="number" step="0.01" {...field} onChange={(e) => field.onChange(parseFloat(e.target.value) || 0)}/></FormControl><FormMessage /></FormItem>
+          )} />
+          <FormField control={control} name="bcvRate" render={({ field }) => (
+            <FormItem><FormLabel>Tasa BCV de EUR del día</FormLabel><FormControl><Input type="number" step="0.01" {...field} onChange={(e) => field.onChange(parseFloat(e.target.value) || 0)} /></FormControl><FormMessage /></FormItem>
+          )} />
+        </div>
+
+        <div>
+          <Label>Monto en Euros (calculado)</Label>
+          <Input type="number" {...register('amountEuros')} readOnly className="mt-2 bg-muted/50" />
+        </div>
         
         <div>
           <Label htmlFor="document-input">Comprobante(s) (opcional)</Label>

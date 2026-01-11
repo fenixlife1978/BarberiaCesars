@@ -1,4 +1,3 @@
-
 import { z } from "zod";
 
 export const months = [
@@ -95,7 +94,9 @@ export const operatingExpenseSchema = z.object({
   date: z.string().min(1, { message: "La fecha es requerida." }),
   description: z.string().min(3, { message: "La descripción debe tener al menos 3 caracteres." }),
   category: z.string().min(3, { message: "La categoría debe tener al menos 3 caracteres." }),
-  amount: z.coerce.number().positive({ message: "El monto debe ser un número positivo." }),
+  amountBolivares: z.coerce.number().positive({ message: "El monto debe ser un número positivo." }),
+  bcvRate: z.coerce.number().positive({ message: "La tasa BCV debe ser un número positivo." }),
+  amountEuros: z.coerce.number(),
   documents: z.array(z.string()).optional(),
   userId: z.string().optional(),
 });
@@ -111,7 +112,9 @@ export type OperatingExpense = {
   date: string;
   description: string;
   category: string;
-  amount: number;
+  amountBolivares: number;
+  bcvRate: number;
+  amountEuros: number;
   documents?: string[];
   userId: string;
   createdAt: {
