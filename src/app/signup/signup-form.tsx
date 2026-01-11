@@ -53,7 +53,7 @@ export default function SignupForm() {
             };
 
             if (email === 'vallecondo@gmail.com') {
-                userDocData.role = 'admin';
+                userDocData.role = 'super_admin';
             }
             
             await setDoc(doc(firestore, "users", user.uid), userDocData);

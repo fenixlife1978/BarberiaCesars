@@ -42,7 +42,7 @@ export default function Header() {
   const { data: settings } = useDoc(settingsRef);
 
   const logoUrl = settings?.logoUrl || '/logo.png';
-  const isAdmin = userRole === 'admin';
+  const isAdmin = userRole === 'super_admin';
 
   return (
     <header className="bg-primary text-primary-foreground shadow-md sticky top-0 z-40">

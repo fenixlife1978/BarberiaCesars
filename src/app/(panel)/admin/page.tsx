@@ -9,12 +9,12 @@ export default function AdminPage() {
 
   useEffect(() => {
      // Protect the route
-    if (userRole !== null && userRole !== 'admin') {
+    if (userRole !== null && userRole !== 'super_admin') {
       redirect('/impuestos');
     }
   }, [userRole]);
  
-  if (userRole !== 'admin') {
+  if (userRole !== 'super_admin') {
     return null; // Or a loading spinner
   }
 
@@ -22,7 +22,7 @@ export default function AdminPage() {
     <div className="flex justify-center items-center h-full">
       <Card className="w-full max-w-md">
         <CardHeader>
-          <CardTitle className="text-center text-2xl font-bold">Panel de Administrador</CardTitle>
+          <CardTitle className="text-center text-2xl font-bold">Panel de Super Administrador</CardTitle>
         </CardHeader>
         <CardContent>
           <p className="text-center text-muted-foreground">

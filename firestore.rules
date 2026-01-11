@@ -2,24 +2,19 @@ rules_version = '2';
 
 service cloud.firestore {
   match /databases/{database}/documents {
-    // Users can read and write their own user document
+    
+    function isSuperAdmin() {
+      return get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'super_admin';
+    }
+
     match /users/{userId} {
-      allow read, write: if request.auth != null && request.auth.uid == userId;
+      // Users can read/write their own data. Super admins can read/write any user's data.
+      allow read, write: if request.auth.uid == userId || isSuperAdmin();
     }
     
-    // Users can manage their own tax records
-    match /users/{userId}/taxRecords/{taxRecordId} {
-        allow read, write, create, delete: if request.auth != null && request.auth.uid == userId;
-    }
-
-    // Users can manage their own economic licenses
-    match /users/{userId}/economicLicenses/{licenseId} {
-        allow read, write, create, delete: if request.auth != null && request.auth.uid == userId;
-    }
-
-    // Users can manage their own settings
-    match /users/{userId}/settings/{settingId} {
-        allow read, write: if request.auth != null && request.auth.uid == userId;
+    match /users/{userId}/{document=**} {
+        // Users can manage their own subcollections. Super admins can manage any.
+        allow read, write, create, delete: if request.auth.uid == userId || isSuperAdmin();
     }
   }
 }
