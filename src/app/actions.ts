@@ -1,25 +1,23 @@
 'use server';
 
-// This file is intended for server-only actions, if needed in the future.
-// The current application architecture relies on client-side data fetching and mutations
-// via the Firebase Client SDK hooks (useCollection, useDoc) and direct SDK calls
-// wrapped in non-blocking functions.
-
-// Example of a future server action:
-/*
-import { revalidatePath } from 'next/cache';
-import { getFirestore } from 'firebase-admin/firestore';
+import { getAuth } from 'firebase-admin/auth';
 import { adminApp } from '@/lib/firebase-admin';
 
-export async function doSomeServerStuff(userId: string) {
-  if (!adminApp) {
-    throw new Error("Admin SDK not initialized");
-  }
-  const db = getFirestore(adminApp);
-  // ... your server logic here
-  revalidatePath('/some-path');
+// This function should only be called from a trusted server environment.
+export async function setSuperAdminClaim(uid: string) {
+    if (!adminApp) {
+        throw new Error("Admin SDK not initialized. Cannot set custom claims.");
+    }
+    const auth = getAuth(adminApp);
+    try {
+        await auth.setCustomUserClaims(uid, { role: 'super_admin' });
+        console.log(`Successfully set 'super_admin' claim for user ${uid}`);
+    } catch (error) {
+        console.error(`Error setting custom claim for user ${uid}:`, error);
+        throw new Error('Failed to set custom claim.');
+    }
 }
-*/
 
-// No actions are exported by default as the current logic is client-side.
+// Keep the file but export an empty object if no other actions are present.
+// This preserves the file for future server actions.
 export {};

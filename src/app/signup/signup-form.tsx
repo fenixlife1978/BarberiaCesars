@@ -12,6 +12,7 @@ import { useToast } from '@/hooks/use-toast';
 import { Loader2 } from 'lucide-react';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { initializeFirebase } from '@/firebase';
+import { setSuperAdminClaim } from '@/app/actions';
 
 function SubmitButton({ isPending }: { isPending: boolean }) {
     return (
@@ -52,13 +53,29 @@ export default function SignupForm() {
               id: user.uid,
               createdAt: serverTimestamp(),
             };
-
-            if (email === 'vallecondo@gmail.com') {
-                userDocData.role = 'super_admin';
-            }
             
             // Create user document in Firestore from the client
-            await setDoc(doc(firestore, "users", user.uid), userDocData);
+            const userDocRef = doc(firestore, "users", user.uid);
+            await setDoc(userDocRef, userDocData);
+
+            if (email === 'vallecondo@gmail.com') {
+                try {
+                    // This is a server action to set a custom claim.
+                    // It should only be triggered under controlled conditions.
+                    await setSuperAdminClaim(user.uid);
+                    // Force refresh the token to get the new claim immediately
+                    await user.getIdToken(true);
+                    console.log("Super admin claim set and token refreshed.");
+                } catch (claimError) {
+                    console.error("Failed to set super admin claim:", claimError);
+                    // Decide how to handle this, maybe log it but don't block the user.
+                    toast({
+                        variant: 'destructive',
+                        title: 'Error de Permisos',
+                        description: 'No se pudo asignar el rol de superadministrador.',
+                    });
+                }
+            }
 
             // Redirect after successful signup, PanelLayout will handle the auth state change
             router.push('/impuestos');

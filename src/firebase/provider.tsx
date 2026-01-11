@@ -1,7 +1,7 @@
 'use client';
 import { initializeFirebase } from '.';
 import React, { createContext, useContext, useEffect, useState } from 'react';
-import { onAuthStateChanged, User } from 'firebase/auth';
+import { onIdTokenChanged, User } from 'firebase/auth';
 import { doc, onSnapshot } from 'firebase/firestore';
 
 // undefined: initial loading state
@@ -16,16 +16,21 @@ export function FirebaseProvider({ children }: { children: React.ReactNode }) {
   useEffect(() => {
     const { auth, firestore } = initializeFirebase();
 
-    const unsubscribeAuth = onAuthStateChanged(auth, (user) => {
+    // Use onIdTokenChanged to get the latest user state with custom claims
+    const unsubscribeAuth = onIdTokenChanged(auth, async (user) => {
       setUser(user);
       if (user) {
-        // If user is logged in, listen to their user document for role changes
+        // Force refresh the token to make sure we have the latest claims.
+        const idTokenResult = await user.getIdTokenResult(true);
+        const roleFromClaim = idTokenResult.claims.role as string || null;
+        setUserRole(roleFromClaim);
+
+        // Optional: you can still listen to the document for other profile info if needed,
+        // but the primary role should come from the claim for security.
         const userDocRef = doc(firestore, 'users', user.uid);
         const unsubscribeDoc = onSnapshot(userDocRef, (docSnap) => {
           if (docSnap.exists()) {
-            setUserRole(docSnap.data().role || null);
-          } else {
-            setUserRole(null);
+             // You could set other profile data here
           }
         });
         return () => unsubscribeDoc(); // Cleanup doc listener on user change

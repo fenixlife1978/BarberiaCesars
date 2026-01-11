@@ -3,35 +3,36 @@ rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
 
-    function isSuperAdmin(userId) {
-      return get(/databases/$(database)/documents/users/$(userId)).data.role == 'super_admin';
+    // A super admin is identified by a custom claim, not by a document read.
+    // This is more secure and efficient.
+    function isSuperAdmin() {
+      return request.auth.token.role == 'super_admin';
     }
     
     function isSignedIn() {
       return request.auth != null;
     }
 
-    // Settings for the default user (company logo/name) can be read by any authenticated user
-    match /users/default-user/settings/general {
-      allow read: if isSignedIn();
-      allow write: if isSuperAdmin(request.auth.uid); // Only super admin can change global settings
-    }
-
+    // Rule for the main user document
     match /users/{userId} {
-      // Users can read their own profile.
-      // SuperAdmins can read any profile.
-      allow read: if request.auth.uid == userId || isSuperAdmin(request.auth.uid);
-      
-      // Users can create their own profile document.
-      // SuperAdmins can write to any profile.
-      allow write: if request.auth.uid == userId || isSuperAdmin(request.auth.uid);
+      // A user can read/write their own profile.
+      // A super admin can read/write any user's profile.
+      allow read, write: if request.auth.uid == userId || isSuperAdmin();
     }
     
-    // This rule covers all subcollections for a user (taxRecords, economicLicenses, operatingExpenses, settings)
-    match /users/{userId}/{document=**} {
-        // Users can manage their own subcollection documents.
-        // SuperAdmins can manage any user's subcollection documents.
-        allow read, write, create, delete: if request.auth.uid == userId || isSuperAdmin(request.auth.uid);
+    // Rule for user settings subcollection
+    match /users/{userId}/settings/{settingId} {
+        // A user can manage their own settings.
+        // A super admin can manage any user's settings.
+        allow read, write: if request.auth.uid == userId || isSuperAdmin();
+    }
+    
+    // Rule for all other user-specific subcollections
+    match /users/{userId}/{collection}/{docId} {
+      // This rule should not match 'settings' as it has its own rule.
+      // Users can manage their own documents in their subcollections.
+      // Super admins can manage any user's documents.
+      allow read, write: if collection != 'settings' && (request.auth.uid == userId || isSuperAdmin());
     }
   }
 }
