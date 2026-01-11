@@ -62,6 +62,7 @@ export default function TaxForm({ isEditMode = false, initialData, onSuccess }: 
     defaultValues: isEditMode && initialData ? {
       ...initialData,
       documents: initialData.documents || [],
+      category: 'Impuestos',
     } : {
       paymentDate: new Date().toISOString().split('T')[0],
       description: '',
@@ -71,6 +72,7 @@ export default function TaxForm({ isEditMode = false, initialData, onSuccess }: 
       amountEuros: 0,
       settledMonths: [],
       documents: [],
+      category: 'Impuestos',
     },
   });
 
@@ -120,16 +122,21 @@ export default function TaxForm({ isEditMode = false, initialData, onSuccess }: 
     }
     const { firestore } = initializeFirebase();
 
+    const dataToSave = {
+      ...values,
+      category: 'Impuestos', // Always ensure category is set
+    };
+
     startTransition(async () => {
         try {
             if (isEditMode && initialData?.id) {
                  const recordRef = doc(firestore, `users/${userIdToUse}/taxRecords`, initialData.id);
-                 await updateDoc(recordRef, values);
+                 await updateDoc(recordRef, dataToSave);
                  toast({title: 'Éxito', description: 'Registro actualizado con éxito.'});
             } else {
                 const recordsCollection = collection(firestore, `users/${userIdToUse}/taxRecords`);
                 await addDoc(recordsCollection, {
-                    ...values,
+                    ...dataToSave,
                     createdAt: serverTimestamp(),
                     userId: userIdToUse,
                 });

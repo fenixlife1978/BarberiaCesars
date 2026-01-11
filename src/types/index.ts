@@ -118,7 +118,7 @@ export type OperatingExpense = {
   id: string;
   date: string;
   description: string;
-  category: z.infer<typeof expenseCategories>;
+  category: (typeof expenseCategories)[number];
   amountBolivares: number;
   bcvRate: number;
   amountEuros: number;
