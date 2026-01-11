@@ -13,7 +13,7 @@ import {
 } from '@/components/ui/table';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
-import { FilterX, Eye, Trash2, FileDown, Loader2, Download } from 'lucide-react';
+import { FilterX, Eye, Trash2, FileDown, Loader2, Download, Pencil } from 'lucide-react';
 import { format } from 'date-fns';
 import { es } from 'date-fns/locale';
 import {
@@ -42,6 +42,7 @@ import { initializeFirebase } from '@/firebase';
 import { doc, deleteDoc } from 'firebase/firestore';
 import { jsPDF } from 'jspdf';
 import 'jspdf-autotable';
+import EconomicLicenseForm from './EconomicLicenseForm';
 
 
 type EconomicLicensesTableProps = {
@@ -92,6 +93,7 @@ function DocumentPreviewDialog({ src }: { src: string }) {
 
 export default function EconomicLicensesTable({ initialLicenses, isLoading }: EconomicLicensesTableProps) {
   const [filter, setFilter] = useState('');
+  const [editingLicense, setEditingLicense] = useState<EconomicLicense | null>(null);
   const { toast } = useToast();
   const user = useAuth();
   const userRole = useUserRole();
@@ -129,6 +131,10 @@ export default function EconomicLicensesTable({ initialLicenses, isLoading }: Ec
             description: 'No se pudo eliminar la licencia.',
         });
     }
+  };
+
+  const handleEditSuccess = () => {
+    setEditingLicense(null);
   };
 
   const clearFilters = () => {
@@ -340,6 +346,9 @@ export default function EconomicLicensesTable({ initialLicenses, isLoading }: Ec
                         </ScrollArea>
                       </DialogContent>
                     </Dialog>
+                    <Button variant="ghost" size="icon" aria-label="Editar licencia" onClick={() => setEditingLicense(license)}>
+                        <Pencil className="h-4 w-4" />
+                    </Button>
                      <Button variant="ghost" size="icon" aria-label="Exportar a PDF" onClick={() => exportToPDF(license)}>
                         <FileDown className="h-4 w-4" />
                     </Button>
@@ -375,6 +384,19 @@ export default function EconomicLicensesTable({ initialLicenses, isLoading }: Ec
           </TableBody>
         </Table>
       </div>
+
+       {editingLicense && (
+        <Dialog open={!!editingLicense} onOpenChange={(open) => !open && setEditingLicense(null)}>
+          <DialogContent className="max-w-3xl">
+            <DialogHeader>
+              <DialogTitle>Editar Licencia Económica</DialogTitle>
+            </DialogHeader>
+             <ScrollArea className="max-h-[70vh] p-4">
+              <EconomicLicenseForm isEditMode initialData={editingLicense} onSuccess={handleEditSuccess} />
+            </ScrollArea>
+          </DialogContent>
+        </Dialog>
+      )}
     </div>
   );
 }

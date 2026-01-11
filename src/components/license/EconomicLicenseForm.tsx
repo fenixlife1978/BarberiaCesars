@@ -6,7 +6,7 @@ import { useForm, useFieldArray } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import Image from 'next/image';
 
-import { economicLicenseSchema, type EconomicLicenseFormValues } from '@/types';
+import { economicLicenseSchema, economicLicenseWithIdSchema, type EconomicLicense, type EconomicLicenseFormValues } from '@/types';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -16,23 +16,30 @@ import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '
 import { Separator } from '../ui/separator';
 import { processImage } from '@/lib/image-utils';
 import { useAuth, useUserRole } from '@/firebase/provider';
-import { addDoc, collection, serverTimestamp } from 'firebase/firestore';
+import { addDoc, collection, doc, serverTimestamp, updateDoc } from 'firebase/firestore';
 import { initializeFirebase } from '@/firebase';
 
-function SubmitButton({ isPending }: { isPending: boolean }) {
+function SubmitButton({ isPending, isEditMode }: { isPending: boolean, isEditMode: boolean }) {
   return (
     <Button type="submit" disabled={isPending} className="w-full bg-accent text-accent-foreground hover:bg-accent/90">
       {isPending ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
-      {isPending ? 'Guardando...' : 'Guardar Licencia'}
+      {isPending ? (isEditMode ? 'Actualizando...' : 'Guardando...') : (isEditMode ? 'Actualizar Licencia' : 'Guardar Licencia')}
     </Button>
   );
 }
 
-export default function EconomicLicenseForm() {
+type EconomicLicenseFormProps = {
+  isEditMode?: boolean;
+  initialData?: EconomicLicense;
+  onSuccess?: () => void;
+};
+
+
+export default function EconomicLicenseForm({ isEditMode = false, initialData, onSuccess }: EconomicLicenseFormProps) {
   const [isPending, startTransition] = useTransition();
   const { toast } = useToast();
   const formRef = useRef<HTMLFormElement>(null);
-  const [previews, setPreviews] = useState<string[]>([]);
+  const [previews, setPreviews] = useState<string[]>(initialData?.documents || []);
   const user = useAuth();
   const userRole = useUserRole();
 
@@ -42,8 +49,11 @@ export default function EconomicLicenseForm() {
   }, [user, userRole]);
 
   const form = useForm<EconomicLicenseFormValues>({
-    resolver: zodResolver(economicLicenseSchema),
-    defaultValues: {
+    resolver: zodResolver(isEditMode ? economicLicenseWithIdSchema : economicLicenseSchema),
+    defaultValues: isEditMode && initialData ? {
+      ...initialData,
+      documents: initialData.documents || [],
+    } : {
       taxpayerId: '',
       taxpayerName: '',
       capital: 0,
@@ -106,17 +116,24 @@ export default function EconomicLicenseForm() {
 
     startTransition(async () => {
         try {
-            const licensesCollection = collection(firestore, `users/${userIdToUse}/economicLicenses`);
-            await addDoc(licensesCollection, {
-                ...values,
-                createdAt: serverTimestamp(),
-                userId: userIdToUse,
-            });
-            toast({title: 'Éxito', description: 'Licencia económica agregada con éxito.'});
-            form.reset();
-            setPreviews([]);
+            if (isEditMode && initialData?.id) {
+                const licenseRef = doc(firestore, `users/${userIdToUse}/economicLicenses`, initialData.id);
+                await updateDoc(licenseRef, values);
+                toast({title: 'Éxito', description: 'Licencia económica actualizada con éxito.'});
+            } else {
+                const licensesCollection = collection(firestore, `users/${userIdToUse}/economicLicenses`);
+                await addDoc(licensesCollection, {
+                    ...values,
+                    createdAt: serverTimestamp(),
+                    userId: userIdToUse,
+                });
+                toast({title: 'Éxito', description: 'Licencia económica agregada con éxito.'});
+                form.reset();
+                setPreviews([]);
+            }
+            if(onSuccess) onSuccess();
         } catch (error) {
-            toast({variant: 'destructive', title: 'Error', description: 'Error al agregar la licencia.'});
+            toast({variant: 'destructive', title: 'Error', description: 'Error al guardar la licencia.'});
         }
     });
   };
@@ -279,7 +296,7 @@ export default function EconomicLicenseForm() {
           />
         </div>
 
-        <SubmitButton isPending={isPending} />
+        <SubmitButton isPending={isPending} isEditMode={isEditMode} />
       </form>
     </Form>
   );

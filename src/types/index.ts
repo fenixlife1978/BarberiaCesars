@@ -75,8 +75,12 @@ export const economicLicenseSchema = z.object({
   userId: z.string().optional(),
 });
 
+export const economicLicenseWithIdSchema = economicLicenseSchema.extend({
+  id: z.string().min(1),
+});
+
 export type EconomicLicenseFormValues = z.infer<typeof economicLicenseSchema>;
-export type AuthorizedActivityFormValues = z.infer<typeof authorizedActivitySchema>;
+export type EconomicLicenseWithIdFormValues = z.infer<typeof economicLicenseWithIdSchema>;
 
 export type EconomicLicense = EconomicLicenseFormValues & {
   id: string;
