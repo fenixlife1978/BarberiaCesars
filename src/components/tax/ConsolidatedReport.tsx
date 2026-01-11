@@ -4,11 +4,21 @@ import { type OperatingExpense, type TaxRecord, expenseCategories, months as mon
 import { getYear, parse } from 'date-fns';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Table, TableBody, TableCell, TableFooter, TableHead, TableHeader, TableRow } from '@/components/ui/table';
+import { Button } from '../ui/button';
+import { FileDown } from 'lucide-react';
+import jsPDF from 'jspdf';
+import 'jspdf-autotable';
 
 type ConsolidatedReportProps = {
   taxRecords: TaxRecord[];
   operatingExpenses: OperatingExpense[];
 };
+
+declare module 'jspdf' {
+  interface jsPDF {
+    autoTable: (options: any) => jsPDF;
+  }
+}
 
 const allCategories: ("Impuestos" | (typeof expenseCategories)[number])[] = ["Impuestos", ...expenseCategories];
 
@@ -69,16 +79,68 @@ export default function ConsolidatedReport({ taxRecords, operatingExpenses }: Co
     });
     return totals;
   }, [monthlyData]);
+
+  const rowTotals = useMemo(() => {
+    const totals: Record<string, number> = {};
+    Object.entries(monthlyData).forEach(([monthIndex, monthData]) => {
+        totals[monthIndex] = Object.values(monthData).reduce((sum, value) => sum + value, 0);
+    });
+    return totals;
+  }, [monthlyData]);
+
+  const grandTotal = useMemo(() => {
+    return Object.values(columnTotals).reduce((sum, value) => sum + value, 0);
+  }, [columnTotals]);
   
   const formatCurrency = (amount: number) => {
     return new Intl.NumberFormat('de-DE', { minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(amount);
   }
 
+  const exportToPDF = () => {
+    const doc = new jsPDF();
+    doc.setFontSize(18);
+    doc.text(`Reporte Consolidado - ${selectedYear}`, 14, 22);
+
+    const tableColumns = ["Mes", ...allCategories, "Total Mes (€)"];
+    const tableRows: any[] = [];
+
+    monthNames.forEach((month, index) => {
+        const rowData = [
+            month,
+            ...allCategories.map(cat => formatCurrency(monthlyData[index][cat] || 0)),
+            formatCurrency(rowTotals[index] || 0)
+        ];
+        tableRows.push(rowData);
+    });
+
+    const footerRow = [
+        "Totales (€)",
+        ...allCategories.map(cat => formatCurrency(columnTotals[cat])),
+        formatCurrency(grandTotal)
+    ];
+
+    doc.autoTable({
+        head: [tableColumns],
+        body: tableRows,
+        foot: [footerRow],
+        startY: 30,
+        theme: 'striped',
+        headStyles: { fillColor: [41, 128, 185], textColor: 255 },
+        footStyles: { fillColor: [230, 230, 230], textColor: 0, fontStyle: 'bold' },
+        styles: { fontSize: 8 },
+        bodyStyles: { minCellHeight: 8 },
+        alternateRowStyles: { fillColor: [245, 245, 245] },
+    });
+
+    doc.save(`reporte_consolidado_${selectedYear}.pdf`);
+  };
+
+
   return (
     <div className="space-y-4">
-      <div className="flex justify-end">
+      <div className="flex flex-col md:flex-row gap-4 items-center">
         <Select value={selectedYear} onValueChange={setSelectedYear}>
-          <SelectTrigger className="w-[180px]">
+          <SelectTrigger className="w-full md:w-[180px]">
             <SelectValue placeholder="Selecciona un año" />
           </SelectTrigger>
           <SelectContent>
@@ -87,6 +149,10 @@ export default function ConsolidatedReport({ taxRecords, operatingExpenses }: Co
             ))}
           </SelectContent>
         </Select>
+         <Button onClick={exportToPDF} className="ml-auto bg-accent text-accent-foreground hover:bg-accent/90">
+          <FileDown className="mr-2 h-4 w-4" />
+          Exportar a PDF
+        </Button>
       </div>
 
       <div className="rounded-md border">
@@ -97,6 +163,7 @@ export default function ConsolidatedReport({ taxRecords, operatingExpenses }: Co
               {allCategories.map(cat => (
                 <TableHead key={cat} className="text-right">{cat}</TableHead>
               ))}
+               <TableHead className="text-right font-bold">Total Mes (€)</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
@@ -108,6 +175,7 @@ export default function ConsolidatedReport({ taxRecords, operatingExpenses }: Co
                     {formatCurrency(monthlyData[index][cat] || 0)}
                   </TableCell>
                 ))}
+                <TableCell className="text-right font-medium">{formatCurrency(rowTotals[index] || 0)}</TableCell>
               </TableRow>
             ))}
           </TableBody>
@@ -119,6 +187,7 @@ export default function ConsolidatedReport({ taxRecords, operatingExpenses }: Co
                   {formatCurrency(columnTotals[cat])}
                 </TableHead>
               ))}
+              <TableHead className="text-right font-bold text-lg">{formatCurrency(grandTotal)}</TableHead>
             </TableRow>
           </TableFooter>
         </Table>
