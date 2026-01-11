@@ -6,14 +6,18 @@ import type { NextRequest } from 'next/server'
 // de autenticación cuando ya tiene una sesión, o a la inversa.
 // La protección real de las rutas la hace el `(panel)/layout.tsx` en el cliente.
 export function middleware(request: NextRequest) {
-  const session = request.cookies.has('__session');
+  const session = request.cookies.has('__session'); // This is a client-side hint, not for server auth
   const { pathname } = request.nextUrl;
 
-  const publicPaths = ['/login', '/signup'];
-  const isPublicPath = publicPaths.includes(pathname);
+  const isPublicPath = pathname === '/login' || pathname === '/signup';
 
-  // Si el usuario tiene una sesión y está en una página pública, redirigir al panel.
-  if (session && isPublicPath) {
+  // Si el usuario parece tener una sesión (basado en una cookie que Firebase client SDK podría establecer)
+  // y está en una página pública, redirigir al panel.
+  // Nota: Firebase SDK del cliente gestiona sus propias cookies/storage, `__session` es solo un posible indicador.
+  // La cookie `firebase-auth-id-token` es otro indicador común.
+  const hasAuthCookie = request.cookies.has('firebase-auth-id-token') || request.cookies.has('__session');
+
+  if (hasAuthCookie && isPublicPath) {
     return NextResponse.redirect(new URL('/impuestos', request.url));
   }
 
@@ -23,7 +27,7 @@ export function middleware(request: NextRequest) {
   // y el estado de auth del cliente se desincronizan.
 
   if (pathname === '/') {
-     return NextResponse.redirect(new URL(session ? '/impuestos' : '/login', request.url));
+     return NextResponse.redirect(new URL(hasAuthCookie ? '/impuestos' : '/login', request.url));
   }
 
 

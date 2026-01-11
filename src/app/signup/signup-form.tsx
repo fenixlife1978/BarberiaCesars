@@ -4,7 +4,7 @@ import { useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { getAuth, createUserWithEmailAndPassword, AuthError } from 'firebase/auth';
-import { getFirestore, doc, setDoc } from 'firebase/firestore';
+import { getFirestore, doc, setDoc, serverTimestamp } from 'firebase/firestore';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -47,19 +47,21 @@ export default function SignupForm() {
             const userCredential = await createUserWithEmailAndPassword(auth, email, password);
             const user = userCredential.user;
 
-            const userDocData: { email: string; id: string; role?: string } = {
+            const userDocData: { email: string; id: string; role?: string, createdAt: any } = {
               email: user.email!,
               id: user.uid,
+              createdAt: serverTimestamp(),
             };
 
             if (email === 'vallecondo@gmail.com') {
                 userDocData.role = 'super_admin';
             }
             
+            // Create user document in Firestore from the client
             await setDoc(doc(firestore, "users", user.uid), userDocData);
 
-            // La redirección la maneja el PanelLayout
-            // router.push('/impuestos');
+            // Redirect after successful signup, PanelLayout will handle the auth state change
+            router.push('/impuestos');
 
         } catch (e) {
             const error = e as AuthError;
@@ -73,6 +75,7 @@ export default function SignupForm() {
                 title: 'Error de registro',
                 description: errorMessage,
             });
+        } finally {
             setIsPending(false);
         }
     };

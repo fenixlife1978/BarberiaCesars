@@ -10,6 +10,7 @@ import { useToast } from '@/hooks/use-toast';
 import { Loader2 } from 'lucide-react';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { initializeFirebase } from '@/firebase';
+import Link from 'next/link';
 
 function SubmitButton({ isPending }: { isPending: boolean }) {
     return (
@@ -36,7 +37,8 @@ export default function LoginForm() {
       const { auth } = initializeFirebase();
       await signInWithEmailAndPassword(auth, email, password);
       // La redirección es manejada por el PanelLayout al detectar el cambio de estado de autenticación.
-      // router.push('/impuestos');
+      // Pero hacemos un push inicial para acelerar la transición visual.
+      router.push('/impuestos');
     } catch (e) {
       const error = e as AuthError;
       let errorMessage = 'Error al iniciar sesión. Por favor, inténtalo de nuevo.';
@@ -49,7 +51,8 @@ export default function LoginForm() {
         title: 'Error de inicio de sesión',
         description: errorMessage,
       });
-      setIsPending(false);
+    } finally {
+        setIsPending(false);
     }
   };
 
