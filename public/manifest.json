@@ -1,6 +1,7 @@
 {
   "name": "Barbería César's",
   "short_name": "César's",
+  "lang": "es",
   "description": "Aplicación de gestión fiscal simplificada para la Barbería César, con soporte móvil.",
   "start_url": "/",
   "display": "standalone",
