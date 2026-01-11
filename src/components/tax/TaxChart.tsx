@@ -5,7 +5,7 @@ import { useMemo } from 'react';
 import { Bar, BarChart, CartesianGrid, XAxis, YAxis, ResponsiveContainer, Tooltip } from 'recharts';
 import { ChartContainer, ChartTooltipContent } from '@/components/ui/chart';
 import { type TaxRecord } from '@/types';
-import { subMonths, format, startOfMonth } from 'date-fns';
+import { subMonths, format, startOfMonth, parse } from 'date-fns';
 import { es } from 'date-fns/locale';
 
 type TaxChartProps = {
@@ -25,27 +25,31 @@ export default function TaxChart({ records }: TaxChartProps) {
     const monthlyTotals: { [key: string]: number } = {};
 
     // Initialize last 6 months
-    for (let i = 0; i < 6; i++) {
+    for (let i = 5; i >= 0; i--) {
       const month = format(subMonths(new Date(), i), 'yyyy-MM');
       monthlyTotals[month] = 0;
     }
 
     records.forEach((record) => {
-      const recordDate = new Date(record.paymentDate);
+      // Ensure paymentDate is treated as local time by adding a time component
+      const recordDate = new Date(record.paymentDate + 'T00:00:00');
       if (recordDate >= sixMonthsAgo) {
         const monthKey = format(recordDate, 'yyyy-MM');
-        if (monthlyTotals[monthKey] !== undefined) {
+        if (monthlyTotals.hasOwnProperty(monthKey)) {
           monthlyTotals[monthKey] += record.amountEuros;
         }
       }
     });
 
     return Object.keys(monthlyTotals)
-      .map((month) => ({
-        month: format(new Date(`${month}-01T12:00:00`), 'MMM yy', { locale: es }),
-        total: monthlyTotals[month],
+      .map((monthKey) => ({
+        // Use a full date for sorting, and a formatted string for display
+        date: parse(monthKey, 'yyyy-MM', new Date()),
+        month: format(parse(monthKey, 'yyyy-MM', new Date()), 'MMM yy', { locale: es }),
+        total: monthlyTotals[monthKey],
       }))
-      .sort((a, b) => new Date(a.month.split(' ').reverse().join('-')).getTime() - new Date(b.month.split(' ').reverse().join('-')).getTime());
+      // Sort by the full date object
+      .sort((a, b) => a.date.getTime() - b.date.getTime());
 
   }, [records]);
 
