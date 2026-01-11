@@ -1,0 +1,21 @@
+{
+  "name": "Barbería César's",
+  "short_name": "César's",
+  "description": "Gestión fiscal simplificada.",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#f1e6d2",
+  "theme_color": "#006241",
+  "icons": [
+    {
+      "src": "/logo-192.png",
+      "sizes": "192x192",
+      "type": "image/png"
+    },
+    {
+      "src": "/logo-512.png",
+      "sizes": "512x512",
+      "type": "image/png"
+    }
+  ]
+}

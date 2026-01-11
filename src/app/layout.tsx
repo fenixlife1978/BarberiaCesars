@@ -2,6 +2,7 @@ import type { Metadata } from 'next';
 import './globals.css';
 import { Toaster } from '@/components/ui/toaster';
 import { FirebaseProvider } from '@/firebase/provider';
+import ServiceWorkerRegistrar from '@/components/ServiceWorkerRegistrar';
 
 export const metadata: Metadata = {
   title: {
@@ -9,6 +10,7 @@ export const metadata: Metadata = {
     template: "%s | Barbería César's",
   },
   description: 'Gestión fiscal simplificada.',
+  manifest: '/manifest.json',
   icons: {
     icon: '/logo.png', // favicon en public/logo.png
   },
@@ -53,6 +55,7 @@ export default function RootLayout({
           {children}
         </FirebaseProvider>
         <Toaster />
+        <ServiceWorkerRegistrar />
       </body>
     </html>
   );
