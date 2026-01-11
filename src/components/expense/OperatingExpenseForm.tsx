@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useEffect, useMemo, useRef, useState, useTransition } from 'react';
@@ -5,7 +6,7 @@ import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import Image from 'next/image';
 
-import { operatingExpenseSchema, operatingExpenseWithIdSchema, type OperatingExpense, type OperatingExpenseFormValues, expenseCategories } from '@/types';
+import { operatingExpenseSchema, operatingExpenseWithIdSchema, type OperatingExpense, type OperatingExpenseFormValues, expenseCategories, predefinedExpenseDescriptions } from '@/types';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -41,6 +42,7 @@ export default function OperatingExpenseForm({ isEditMode = false, initialData, 
   const [previews, setPreviews] = useState<string[]>(initialData?.documents || []);
   const user = useAuth();
   const userRole = useUserRole();
+  const [showCustomDescription, setShowCustomDescription] = useState(false);
 
   const userIdToUse = useMemo(() => {
     if (!user) return null;
@@ -63,10 +65,19 @@ export default function OperatingExpenseForm({ isEditMode = false, initialData, 
     },
   });
   
-  const { control, setValue, handleSubmit, watch, register } = form;
+  const { control, setValue, handleSubmit, watch, register, trigger } = form;
 
   const amountBolivares = watch('amountBolivares');
   const bcvRate = watch('bcvRate');
+  const currentDescription = watch('description');
+
+  useEffect(() => {
+    // Si estamos en modo edición, comprobamos si la descripción inicial es una de las predefinidas.
+    if (isEditMode && initialData?.description) {
+      const isPredefined = predefinedExpenseDescriptions.includes(initialData.description as any);
+      setShowCustomDescription(!isPredefined);
+    }
+  }, [isEditMode, initialData]);
 
   useEffect(() => {
     if (amountBolivares > 0 && bcvRate > 0) {
@@ -101,6 +112,17 @@ export default function OperatingExpenseForm({ isEditMode = false, initialData, 
     setPreviews(updatedPreviews);
     setValue('documents', updatedPreviews);
   };
+  
+  const handleDescriptionChange = (value: string) => {
+    if (value === 'otra') {
+      setShowCustomDescription(true);
+      setValue('description', ''); // Limpiamos el valor para que el usuario escriba
+    } else {
+      setShowCustomDescription(false);
+      setValue('description', value);
+    }
+    trigger('description');
+  };
 
   const onSubmit = (values: OperatingExpenseFormValues) => {
     if (!userIdToUse) {
@@ -123,7 +145,16 @@ export default function OperatingExpenseForm({ isEditMode = false, initialData, 
                     userId: userIdToUse,
                 });
                 toast({title: 'Éxito', description: 'Gasto agregado con éxito.'});
-                form.reset();
+                form.reset({
+                  date: new Date().toISOString().split('T')[0],
+                  description: '',
+                  category: undefined,
+                  amountBolivares: 0,
+                  bcvRate: 0,
+                  amountEuros: 0,
+                  documents: [],
+                });
+                setShowCustomDescription(false);
                 setPreviews([]);
             }
             if(onSuccess) onSuccess();
@@ -139,9 +170,36 @@ export default function OperatingExpenseForm({ isEditMode = false, initialData, 
         <FormField control={control} name="date" render={({ field }) => (
           <FormItem><FormLabel>Fecha</FormLabel><FormControl><Input type="date" {...field} /></FormControl><FormMessage /></FormItem>
         )} />
-        <FormField control={control} name="description" render={({ field }) => (
-          <FormItem><FormLabel>Descripción</FormLabel><FormControl><Input placeholder="Ej: Compra de insumos" {...field} /></FormControl><FormMessage /></FormItem>
-        )} />
+        
+        <FormItem>
+            <FormLabel>Descripción</FormLabel>
+            <Select onValueChange={handleDescriptionChange} value={predefinedExpenseDescriptions.includes(currentDescription as any) ? currentDescription : 'otra'}>
+              <FormControl>
+                <SelectTrigger>
+                  <SelectValue placeholder="Selecciona una descripción" />
+                </SelectTrigger>
+              </FormControl>
+              <SelectContent>
+                {predefinedExpenseDescriptions.map(desc => (
+                  <SelectItem key={desc} value={desc}>{desc}</SelectItem>
+                ))}
+                <SelectItem value="otra">Otra descripción...</SelectItem>
+              </SelectContent>
+            </Select>
+        </FormItem>
+
+        {showCustomDescription && (
+            <FormField control={control} name="description" render={({ field }) => (
+            <FormItem>
+              <FormLabel>Descripción Personalizada</FormLabel>
+              <FormControl>
+                <Input placeholder="Ej: Compra de insumos" {...field} />
+              </FormControl>
+              <FormMessage />
+            </FormItem>
+            )} />
+        )}
+
         <FormField control={control} name="category" render={({ field }) => (
           <FormItem>
             <FormLabel>Categoría</FormLabel>

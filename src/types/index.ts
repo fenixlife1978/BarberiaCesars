@@ -1,3 +1,4 @@
+
 import { z } from "zod";
 
 export const months = [
@@ -8,6 +9,14 @@ export const months = [
 export const expenseCategories = [
   "Gastos Básicos",
   "Otros Gastos",
+] as const;
+
+export const predefinedExpenseDescriptions = [
+  "Servicio de Internet",
+  "Servicio de Luz (CORPOELEC)",
+  "Servicio de Agua (Aguas YARACUY)",
+  "Telefonia Fija (CANTV)",
+  "Aseo Urbano (ALCALDIA)",
 ] as const;
 
 export const taxRecordSchema = z.object({
