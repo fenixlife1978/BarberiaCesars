@@ -46,6 +46,7 @@ export default function Header() {
   const { data: settings } = useDoc(settingsRef);
 
   const logoUrl = settings?.logoUrl || '/logo.png';
+  const companyName = settings?.companyName || 'FiscalFlow';
   const isAdmin = userRole === 'super_admin';
 
   return (
@@ -53,10 +54,10 @@ export default function Header() {
       <div className="container mx-auto flex items-center justify-between h-20 px-4 md:px-8">
         <Link href="/impuestos" className="flex items-center gap-3">
           <div className="relative w-[50px] h-[50px]">
-            {logoUrl && <Image src={logoUrl} alt="FiscalFlow Logo" fill sizes="50px" className="rounded-full object-cover" />}
+            {logoUrl && <Image src={logoUrl} alt="Logo" fill sizes="50px" className="rounded-full object-cover" />}
           </div>
           <h1 className="text-2xl md:text-3xl font-bold font-headline tracking-tight hidden sm:block">
-            FiscalFlow
+            {companyName}
           </h1>
         </Link>
         

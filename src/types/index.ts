@@ -92,6 +92,7 @@ export type EconomicLicense = EconomicLicenseFormValues & {
 };
 
 export const settingsSchema = z.object({
+  companyName: z.string().optional(),
   logoUrl: z.string().url('URL de logo inválida.').or(z.literal('')).optional(),
 });
 
@@ -99,6 +100,7 @@ export type SettingsFormValues = z.infer<typeof settingsSchema>;
 
 export type Settings = {
   id: string;
+  companyName?: string;
   logoUrl?: string;
   userId: string;
 };

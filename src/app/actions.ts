@@ -245,6 +245,7 @@ export async function getSettings(userId: string): Promise<Settings | null> {
 export async function updateSettings(prevState: any, formData: FormData) {
   const userId = await getUserId();
   const rawData = {
+    companyName: formData.get('companyName'),
     logoUrl: formData.get('logoUrl'),
   };
 
@@ -262,6 +263,7 @@ export async function updateSettings(prevState: any, formData: FormData) {
     const settingsRef = db.doc(`users/${userId}/settings/general`);
     
     await settingsRef.set({
+        companyName: validatedFields.data.companyName || "",
         logoUrl: validatedFields.data.logoUrl || ""
     }, { merge: true });
 

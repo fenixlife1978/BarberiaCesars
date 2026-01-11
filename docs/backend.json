@@ -62,6 +62,7 @@
         "type": "object",
         "properties": {
             "id": { "type": "string" },
+            "companyName": { "type": "string" },
             "logoUrl": { "type": "string", "format": "uri" },
             "userId": { "type": "string" }
         },

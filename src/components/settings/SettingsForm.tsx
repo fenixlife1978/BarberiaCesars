@@ -7,7 +7,7 @@ import { settingsSchema, type Settings, type SettingsFormValues } from '@/types'
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Form, FormControl, FormField, FormItem } from '@/components/ui/form';
+import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
 import { useToast } from '@/hooks/use-toast';
 import { Loader2, UploadCloud, X } from 'lucide-react';
 import Image from 'next/image';
@@ -45,6 +45,7 @@ export default function SettingsForm({ initialSettings }: SettingsFormProps) {
   const form = useForm<SettingsFormValues>({
     resolver: zodResolver(settingsSchema),
     defaultValues: {
+      companyName: initialSettings?.companyName || '',
       logoUrl: initialSettings?.logoUrl || '',
     },
   });
@@ -84,6 +85,7 @@ export default function SettingsForm({ initialSettings }: SettingsFormProps) {
         try {
             const settingsRef = doc(firestore, `users/${userIdToUse}/settings/general`);
             await setDoc(settingsRef, {
+                companyName: values.companyName || "",
                 logoUrl: values.logoUrl || ""
             }, { merge: true });
             toast({ title: 'Éxito', description: 'Ajustes guardados con éxito.'});
@@ -96,6 +98,20 @@ export default function SettingsForm({ initialSettings }: SettingsFormProps) {
   return (
     <Form {...form}>
       <form ref={formRef} onSubmit={handleSubmit(onSubmit)} className="space-y-8">
+        <FormField
+            control={form.control}
+            name="companyName"
+            render={({ field }) => (
+                <FormItem>
+                    <FormLabel>Nombre de la Empresa</FormLabel>
+                    <FormControl>
+                        <Input placeholder="El nombre de tu empresa" {...field} />
+                    </FormControl>
+                    <FormMessage />
+                </FormItem>
+            )}
+        />
+
         <div>
           <Label>Logo de la Empresa</Label>
           <div className="mt-2 flex flex-col items-center justify-center rounded-lg border border-dashed border-border px-6 py-10">
