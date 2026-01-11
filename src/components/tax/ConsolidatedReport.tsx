@@ -10,7 +10,8 @@ type ConsolidatedReportProps = {
   operatingExpenses: OperatingExpense[];
 };
 
-const allCategories = ["Impuestos", ...expenseCategories];
+const allCategories: ("Impuestos" | (typeof expenseCategories)[number])[] = ["Impuestos", ...expenseCategories];
+
 
 export default function ConsolidatedReport({ taxRecords, operatingExpenses }: ConsolidatedReportProps) {
   const [selectedYear, setSelectedYear] = useState<string>(() => new Date().getFullYear().toString());

@@ -6,13 +6,8 @@ export const months = [
 ];
 
 export const expenseCategories = [
-  "Servicios Básicos",
-  "Proveedores",
-  "Nómina",
-  "Alquiler",
-  "Mantenimiento",
-  "Marketing",
-  "Otros",
+  "Gastos Básicos",
+  "Otros Gastos",
 ] as const;
 
 export const taxRecordSchema = z.object({
