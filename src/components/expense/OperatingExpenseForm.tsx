@@ -5,7 +5,7 @@ import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import Image from 'next/image';
 
-import { operatingExpenseSchema, operatingExpenseWithIdSchema, type OperatingExpense, type OperatingExpenseFormValues } from '@/types';
+import { operatingExpenseSchema, operatingExpenseWithIdSchema, type OperatingExpense, type OperatingExpenseFormValues, expenseCategories } from '@/types';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -16,6 +16,7 @@ import { processImage } from '@/lib/image-utils';
 import { useAuth, useUserRole } from '@/firebase/provider';
 import { addDoc, collection, doc, serverTimestamp, updateDoc } from 'firebase/firestore';
 import { initializeFirebase } from '@/firebase';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../ui/select';
 
 function SubmitButton({ isPending, isEditMode }: { isPending: boolean, isEditMode: boolean }) {
   return (
@@ -54,7 +55,7 @@ export default function OperatingExpenseForm({ isEditMode = false, initialData, 
     } : {
       date: new Date().toISOString().split('T')[0],
       description: '',
-      category: '',
+      category: undefined,
       amountBolivares: 0,
       bcvRate: 0,
       amountEuros: 0,
@@ -142,7 +143,22 @@ export default function OperatingExpenseForm({ isEditMode = false, initialData, 
           <FormItem><FormLabel>Descripción</FormLabel><FormControl><Input placeholder="Ej: Compra de insumos" {...field} /></FormControl><FormMessage /></FormItem>
         )} />
         <FormField control={control} name="category" render={({ field }) => (
-          <FormItem><FormLabel>Categoría</FormLabel><FormControl><Input placeholder="Ej: Proveedores" {...field} /></FormControl><FormMessage /></FormItem>
+          <FormItem>
+            <FormLabel>Categoría</FormLabel>
+            <Select onValueChange={field.onChange} defaultValue={field.value}>
+              <FormControl>
+                <SelectTrigger>
+                  <SelectValue placeholder="Selecciona una categoría" />
+                </SelectTrigger>
+              </FormControl>
+              <SelectContent>
+                {expenseCategories.map(category => (
+                  <SelectItem key={category} value={category}>{category}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            <FormMessage />
+          </FormItem>
         )} />
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           <FormField control={control} name="amountBolivares" render={({ field }) => (

@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useMemo, useState } from 'react';
@@ -163,6 +162,7 @@ export default function TaxRecordsTable({ initialRecords, isLoading }: TaxRecord
     const tableBody = [
         ['Fecha', formatDate(record.paymentDate)],
         ['Descripción', record.description],
+        ['Categoría', record.category],
         ['Nro. Recibo', record.receiptNumber],
         ['Monto (Bs.)', formatCurrency(record.amountBolivares)],
         ['Tasa BCV (€)', formatCurrency(record.bcvRate)],
@@ -248,6 +248,7 @@ export default function TaxRecordsTable({ initialRecords, isLoading }: TaxRecord
                            <div className="space-y-4">
                             <p><strong className="font-medium">Fecha:</strong> {formatDate(record.paymentDate)}</p>
                             <p><strong className="font-medium">Descripción:</strong> {record.description}</p>
+                             <p><strong className="font-medium">Categoría:</strong> <Badge variant="outline">{record.category}</Badge></p>
                             <p><strong className="font-medium">Nro. Recibo:</strong> {record.receiptNumber}</p>
                             <p><strong className="font-medium">Monto (Bs.):</strong> {formatCurrency(record.amountBolivares)}</p>
                             <p><strong className="font-medium">Tasa BCV (€):</strong> {formatCurrency(record.bcvRate)}</p>

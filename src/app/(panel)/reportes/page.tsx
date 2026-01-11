@@ -5,9 +5,12 @@ import { useCollection } from '@/firebase/firestore/use-collection';
 import { initializeFirebase } from '@/firebase';
 import { useAuth, useUserRole } from '@/firebase/provider';
 import TaxReport from "@/components/tax/TaxReport";
+import ConsolidatedReport from "@/components/tax/ConsolidatedReport";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import BackButton from "@/components/BackButton";
 import { Skeleton } from '@/components/ui/skeleton';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { OperatingExpense, TaxRecord } from '@/types';
 
 export default function ReportesPage() {
   const user = useAuth();
@@ -19,17 +22,29 @@ export default function ReportesPage() {
     return userRole === 'super_admin' ? 'default-user' : user.uid;
   }, [user, userRole]);
 
-  const recordsRef = useMemo(() => {
+  // Fetch Tax Records
+  const taxRecordsRef = useMemo(() => {
     if (!userIdToQuery) return null;
     return collection(firestore, `users/${userIdToQuery}/taxRecords`);
   }, [userIdToQuery, firestore]);
-  
-  const recordsQuery = useMemo(() => {
-    if (!recordsRef) return null;
-    return query(recordsRef, orderBy('paymentDate', 'desc'));
-  }, [recordsRef]);
+  const taxRecordsQuery = useMemo(() => {
+    if (!taxRecordsRef) return null;
+    return query(taxRecordsRef, orderBy('paymentDate', 'desc'));
+  }, [taxRecordsRef]);
+  const { data: taxRecords, isLoading: isLoadingTax } = useCollection<TaxRecord>(taxRecordsQuery);
 
-  const { data: records, isLoading } = useCollection(recordsQuery);
+  // Fetch Operating Expenses
+  const expensesRef = useMemo(() => {
+    if (!userIdToQuery) return null;
+    return collection(firestore, `users/${userIdToQuery}/operatingExpenses`);
+  }, [userIdToQuery, firestore]);
+  const expensesQuery = useMemo(() => {
+    if (!expensesRef) return null;
+    return query(expensesRef, orderBy('date', 'desc'));
+  }, [expensesRef]);
+  const { data: expenses, isLoading: isLoadingExpenses } = useCollection<OperatingExpense>(expensesQuery);
+
+  const isLoading = isLoadingTax || isLoadingExpenses;
 
   return (
     <div className="space-y-6">
@@ -38,17 +53,38 @@ export default function ReportesPage() {
       </div>
       <Card className="shadow-lg">
         <CardHeader>
-          <CardTitle className="text-2xl font-headline">Reporte de Impuestos</CardTitle>
+          <CardTitle className="text-2xl font-headline">Reportes</CardTitle>
         </CardHeader>
         <CardContent>
-          {isLoading ? (
-            <div className="space-y-4">
-              <Skeleton className="h-10 w-full" />
-              <Skeleton className="h-40 w-full" />
-            </div>
-          ) : (
-            <TaxReport records={records || []} />
-          )}
+          <Tabs defaultValue="consolidado">
+            <TabsList className="grid w-full grid-cols-2">
+              <TabsTrigger value="consolidado">Reporte Consolidado</TabsTrigger>
+              <TabsTrigger value="impuestos">Reporte de Impuestos</TabsTrigger>
+            </TabsList>
+            <TabsContent value="consolidado" className="mt-6">
+               {isLoading ? (
+                <div className="space-y-4">
+                  <Skeleton className="h-10 w-full" />
+                  <Skeleton className="h-64 w-full" />
+                </div>
+              ) : (
+                <ConsolidatedReport 
+                  taxRecords={taxRecords || []} 
+                  operatingExpenses={expenses || []} 
+                />
+              )}
+            </TabsContent>
+            <TabsContent value="impuestos" className="mt-6">
+              {isLoadingTax ? (
+                <div className="space-y-4">
+                  <Skeleton className="h-10 w-full" />
+                  <Skeleton className="h-40 w-full" />
+                </div>
+              ) : (
+                <TaxReport records={taxRecords || []} />
+              )}
+            </TabsContent>
+          </Tabs>
         </CardContent>
       </Card>
     </div>

@@ -5,6 +5,16 @@ export const months = [
   "Julio", "Agosto", "Septiembre", "Octubre", "Noviembre", "Diciembre"
 ];
 
+export const expenseCategories = [
+  "Servicios Básicos",
+  "Proveedores",
+  "Nómina",
+  "Alquiler",
+  "Mantenimiento",
+  "Marketing",
+  "Otros",
+] as const;
+
 export const taxRecordSchema = z.object({
   paymentDate: z.string().min(1, { message: "La fecha es requerida." }),
   description: z.string().min(3, { message: "La descripción debe tener al menos 3 caracteres." }),
@@ -15,6 +25,7 @@ export const taxRecordSchema = z.object({
   settledMonths: z.array(z.string()).min(1, { message: "Debes seleccionar al menos un mes." }),
   documents: z.array(z.string()).optional(),
   userId: z.string().optional(),
+  category: z.string().default("Impuestos").optional(),
 });
 
 export const taxRecordWithIdSchema = taxRecordSchema.extend({
@@ -36,6 +47,7 @@ export type TaxRecord = {
   settledMonths: string[];
   documents?: string[];
   userId: string;
+  category: string;
   createdAt: {
     seconds: number;
     nanoseconds: number;
@@ -93,7 +105,7 @@ export type EconomicLicense = EconomicLicenseFormValues & {
 export const operatingExpenseSchema = z.object({
   date: z.string().min(1, { message: "La fecha es requerida." }),
   description: z.string().min(3, { message: "La descripción debe tener al menos 3 caracteres." }),
-  category: z.string().min(3, { message: "La categoría debe tener al menos 3 caracteres." }),
+  category: z.enum(expenseCategories, { required_error: "La categoría es requerida." }),
   amountBolivares: z.coerce.number().positive({ message: "El monto debe ser un número positivo." }),
   bcvRate: z.coerce.number().positive({ message: "La tasa BCV debe ser un número positivo." }),
   amountEuros: z.coerce.number(),
@@ -111,7 +123,7 @@ export type OperatingExpense = {
   id: string;
   date: string;
   description: string;
-  category: string;
+  category: z.infer<typeof expenseCategories>;
   amountBolivares: number;
   bcvRate: number;
   amountEuros: number;
