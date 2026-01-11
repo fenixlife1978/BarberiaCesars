@@ -65,19 +65,20 @@ export default function OperatingExpenseForm({ isEditMode = false, initialData, 
     },
   });
   
-  const { control, setValue, handleSubmit, watch, register, trigger } = form;
+  const { control, setValue, handleSubmit, watch, register, trigger, resetField } = form;
 
   const amountBolivares = watch('amountBolivares');
   const bcvRate = watch('bcvRate');
   const currentDescription = watch('description');
 
   useEffect(() => {
-    // Si estamos en modo edición, comprobamos si la descripción inicial es una de las predefinidas.
+    // Determine if the description is custom when in edit mode
     if (isEditMode && initialData?.description) {
       const isPredefined = predefinedExpenseDescriptions.includes(initialData.description as any);
       setShowCustomDescription(!isPredefined);
     }
   }, [isEditMode, initialData]);
+
 
   useEffect(() => {
     if (amountBolivares > 0 && bcvRate > 0) {
@@ -116,7 +117,7 @@ export default function OperatingExpenseForm({ isEditMode = false, initialData, 
   const handleDescriptionChange = (value: string) => {
     if (value === 'otra') {
       setShowCustomDescription(true);
-      setValue('description', ''); // Limpiamos el valor para que el usuario escriba
+      setValue('description', ''); 
     } else {
       setShowCustomDescription(false);
       setValue('description', value);
@@ -135,7 +136,7 @@ export default function OperatingExpenseForm({ isEditMode = false, initialData, 
         try {
             if (isEditMode && initialData?.id) {
                 const expenseRef = doc(firestore, `users/${userIdToUse}/operatingExpenses`, initialData.id);
-                await updateDoc(expenseRef, values);
+                await updateDoc(expenseRef, { ...values });
                 toast({title: 'Éxito', description: 'Gasto actualizado con éxito.'});
             } else {
                 const expensesCollection = collection(firestore, `users/${userIdToUse}/operatingExpenses`);
@@ -154,6 +155,7 @@ export default function OperatingExpenseForm({ isEditMode = false, initialData, 
                   amountEuros: 0,
                   documents: [],
                 });
+                resetField('category');
                 setShowCustomDescription(false);
                 setPreviews([]);
             }
@@ -163,6 +165,9 @@ export default function OperatingExpenseForm({ isEditMode = false, initialData, 
         }
     });
   };
+  
+  const isPredefined = predefinedExpenseDescriptions.includes(currentDescription as any);
+  const selectValue = showCustomDescription ? 'otra' : (isPredefined ? currentDescription : '');
 
   return (
     <Form {...form}>
@@ -173,7 +178,7 @@ export default function OperatingExpenseForm({ isEditMode = false, initialData, 
         
         <FormItem>
             <FormLabel>Descripción</FormLabel>
-            <Select onValueChange={handleDescriptionChange} value={predefinedExpenseDescriptions.includes(currentDescription as any) ? currentDescription : 'otra'}>
+            <Select onValueChange={handleDescriptionChange} value={selectValue}>
               <FormControl>
                 <SelectTrigger>
                   <SelectValue placeholder="Selecciona una descripción" />
@@ -203,7 +208,7 @@ export default function OperatingExpenseForm({ isEditMode = false, initialData, 
         <FormField control={control} name="category" render={({ field }) => (
           <FormItem>
             <FormLabel>Categoría</FormLabel>
-            <Select onValueChange={field.onChange} defaultValue={field.value}>
+            <Select onValueChange={field.onChange} defaultValue={field.value} value={field.value}>
               <FormControl>
                 <SelectTrigger>
                   <SelectValue placeholder="Selecciona una categoría" />
@@ -284,3 +289,5 @@ export default function OperatingExpenseForm({ isEditMode = false, initialData, 
     </Form>
   );
 }
+
+    
