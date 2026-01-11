@@ -12,7 +12,11 @@ export const metadata: Metadata = {
   description: 'Gestión fiscal simplificada.',
   manifest: '/manifest.json',
   icons: {
-    icon: '/logo.png', // favicon en public/logo.png
+    icon: [
+      { url: '/logo.png', type: 'image/png' }, // favicon principal
+      { url: '/logo-192.png', sizes: '192x192', type: 'image/png' },
+      { url: '/logo-512.png', sizes: '512x512', type: 'image/png' },
+    ],
   },
   openGraph: {
     title: "Barbería César's",
@@ -21,7 +25,7 @@ export const metadata: Metadata = {
     siteName: "Barbería César's",
     images: [
       {
-        url: "/logo.png", // imagen en public/logo.png
+        url: "/logo.png",
         width: 800,
         height: 600,
         alt: "Logo Barbería César's",
