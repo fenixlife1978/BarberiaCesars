@@ -1,8 +1,7 @@
-
 'use client';
 
 import { useMemo, useState } from 'react';
-import { type EconomicLicense } from '@/types';
+import { type EconomicLicense, Settings } from '@/types';
 import {
   Table,
   TableBody,
@@ -43,6 +42,7 @@ import { doc, deleteDoc } from 'firebase/firestore';
 import { jsPDF } from 'jspdf';
 import 'jspdf-autotable';
 import EconomicLicenseForm from './EconomicLicenseForm';
+import { useDoc } from '@/firebase/firestore/use-doc';
 
 
 type EconomicLicensesTableProps = {
@@ -97,11 +97,21 @@ export default function EconomicLicensesTable({ initialLicenses, isLoading }: Ec
   const { toast } = useToast();
   const user = useAuth();
   const userRole = useUserRole();
+  const { firestore } = initializeFirebase();
 
   const userIdToUse = useMemo(() => {
     if (!user) return null;
     return userRole === 'super_admin' ? 'default-user' : user.uid;
   }, [user, userRole]);
+
+  const settingsRef = useMemo(() => {
+    if (!userIdToUse) return null;
+    return doc(firestore, `users/${userIdToUse}/settings/general`);
+  }, [userIdToUse, firestore]);
+
+  const { data: settings } = useDoc<Settings>(settingsRef);
+  const companyName = settings?.companyName || 'Mi Empresa';
+  const logoUrl = settings?.logoUrl;
 
   const filteredLicenses = useMemo(() => {
     return (initialLicenses || []).filter((license) => {
@@ -116,7 +126,7 @@ export default function EconomicLicensesTable({ initialLicenses, isLoading }: Ec
 
   const handleDelete = async (id: string) => {
     if (!userIdToUse) return;
-    const { firestore } = initializeFirebase();
+    
     const licenseRef = doc(firestore, `users/${userIdToUse}/economicLicenses`, id);
     try {
         await deleteDoc(licenseRef);
@@ -153,15 +163,38 @@ export default function EconomicLicensesTable({ initialLicenses, isLoading }: Ec
     }
   }
 
+  const addHeaderToPDF = (doc: jsPDF, title: string) => {
+    const emissionDate = format(new Date(), "d MMM yyyy, HH:mm:ss", { locale: es });
+    
+    if (logoUrl) {
+      try {
+        const img = new Image();
+        img.crossOrigin = "Anonymous";
+        img.src = logoUrl;
+        doc.addImage(logoUrl, 'PNG', 14, 12, 20, 20);
+      } catch (e) {
+        console.error("Error loading logo for PDF", e);
+      }
+    }
+    
+    doc.setFontSize(18);
+    doc.text(companyName, logoUrl ? 40 : 14, 22);
+    doc.setFontSize(11);
+    doc.setTextColor(100);
+    doc.text(title, logoUrl ? 40 : 14, 28);
+    doc.text(`Emitido: ${emissionDate}`, doc.internal.pageSize.getWidth() - 14, 28, { align: 'right' });
+  };
+
+
   const exportToPDF = (license: EconomicLicense) => {
     const doc = new jsPDF();
-    doc.setFontSize(18);
-    doc.text(`Detalles de la Licencia: ${license.licenseNumber}`, 14, 22);
+    const reportTitle = `Detalles de la Licencia: ${license.licenseNumber}`;
+    addHeaderToPDF(doc, reportTitle);
 
     doc.setFontSize(12);
-    doc.text('Información del Contribuyente', 14, 35);
+    doc.text('Información del Contribuyente', 14, 50);
     doc.autoTable({
-      startY: 40,
+      startY: 55,
       body: [
         ['C.I./RIF', license.taxpayerId],
         ['Contribuyente', license.taxpayerName],
@@ -210,7 +243,7 @@ export default function EconomicLicensesTable({ initialLicenses, isLoading }: Ec
       head: [['Código', 'Descripción', 'Alícuota', 'Mínimo Imputable']],
       body: license.authorizedActivities.map(act => [act.code, act.description, `${act.aliquot}%`, `${formatCurrency(act.taxableMinimum)} Bs.`]),
       theme: 'striped',
-      headStyles: { fillColor: [41, 128, 185] },
+      headStyles: { fillColor: [0, 98, 65] },
       styles: { fontSize: 8 },
     });
 

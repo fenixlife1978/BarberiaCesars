@@ -1,8 +1,7 @@
-
 'use client';
 
 import { useState, useMemo } from 'react';
-import { type TaxRecord } from '@/types';
+import { type TaxRecord, Settings } from '@/types';
 import { Button } from '@/components/ui/button';
 import { DateRange } from 'react-day-picker';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
@@ -24,6 +23,10 @@ import { cn } from '@/lib/utils';
 import { months } from '@/types';
 import { jsPDF } from 'jspdf';
 import 'jspdf-autotable';
+import { useAuth, useUserRole } from '@/firebase/provider';
+import { useDoc } from '@/firebase/firestore/use-doc';
+import { doc } from 'firebase/firestore';
+import { initializeFirebase } from '@/firebase';
 
 
 type TaxReportProps = {
@@ -39,6 +42,23 @@ declare module 'jspdf' {
 export default function TaxReport({ records }: TaxReportProps) {
   const [dateRange, setDateRange] = useState<DateRange | undefined>();
   const [selectedYear, setSelectedYear] = useState<string>('all');
+  const user = useAuth();
+  const userRole = useUserRole();
+  const { firestore } = initializeFirebase();
+  
+  const userIdToQuery = useMemo(() => {
+    if (!user) return null;
+    return userRole === 'super_admin' ? 'default-user' : user.uid;
+  }, [user, userRole]);
+
+  const settingsRef = useMemo(() => {
+    if (!userIdToQuery) return null;
+    return doc(firestore, `users/${userIdToQuery}/settings/general`);
+  }, [userIdToQuery, firestore]);
+
+  const { data: settings } = useDoc<Settings>(settingsRef);
+  const companyName = settings?.companyName || 'Mi Empresa';
+  const logoUrl = settings?.logoUrl;
   
   const formatCurrency = (amount: number) => {
     return new Intl.NumberFormat('de-DE', { minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(amount);
@@ -103,18 +123,44 @@ export default function TaxReport({ records }: TaxReportProps) {
     setSelectedYear('all');
   };
 
-  const formatDate = (date: Date) => {
+  const formatDateShort = (date: Date) => {
     return format(date, 'd MMM yyyy', { locale: es });
   }
 
+  const addHeaderToPDF = (doc: jsPDF, title: string) => {
+    const emissionDate = format(new Date(), "d MMM yyyy, HH:mm:ss", { locale: es });
+    
+    if (logoUrl) {
+      try {
+        const img = new Image();
+        img.crossOrigin = "Anonymous";
+        img.src = logoUrl;
+        doc.addImage(logoUrl, 'PNG', 14, 12, 20, 20);
+      } catch (e) {
+        console.error("Error loading logo for PDF", e);
+      }
+    }
+    
+    doc.setFontSize(18);
+    doc.text(companyName, logoUrl ? 40 : 14, 22);
+    doc.setFontSize(11);
+    doc.setTextColor(100);
+    doc.text(title, logoUrl ? 40 : 14, 28);
+    doc.text(`Emitido: ${emissionDate}`, doc.internal.pageSize.getWidth() - 14, 28, { align: 'right' });
+  };
+
+
   const exportToPDF = () => {
     const doc = new jsPDF();
+    const reportTitle = "Reporte de Impuestos";
+    addHeaderToPDF(doc, reportTitle);
+
     const tableColumn = ["Fecha", "Descripción", "Nro. Recibo", "Periodo", "Monto (Bs.)", "Tasa BCV", "Monto (€)"];
     const tableRows: any[][] = [];
 
     filteredRecords.forEach(record => {
       const recordData = [
-        formatDate(new Date(record.paymentDate + 'T00:00:00')),
+        formatDateShort(new Date(record.paymentDate + 'T00:00:00')),
         record.description,
         record.receiptNumber,
         getConsolidatedPeriod(record.settledMonths),
@@ -124,28 +170,25 @@ export default function TaxReport({ records }: TaxReportProps) {
       ];
       tableRows.push(recordData);
     });
-
-    const totalRow = [
+    
+    const foot = [
+      [
         { content: 'Totales', colSpan: 4, styles: { halign: 'right', fontStyle: 'bold' } },
         { content: formatCurrency(totals.bolivares), styles: { halign: 'right', fontStyle: 'bold' } },
         {},
         { content: formatCurrency(totals.euros), styles: { halign: 'right', fontStyle: 'bold' } },
+      ]
     ];
-    tableRows.push(totalRow);
 
 
     doc.autoTable({
         head: [tableColumn],
         body: tableRows,
-        startY: 20,
+        foot: foot,
+        startY: 40,
         theme: 'striped',
-        headStyles: { fillColor: [41, 128, 185] },
-        didDrawPage: function (data) {
-            // Header
-            doc.setFontSize(20);
-            doc.setTextColor(40);
-            doc.text("Reporte de Impuestos", 14, 15);
-        }
+        headStyles: { fillColor: [0, 98, 65] },
+        footStyles: { fillColor: [241, 230, 210], textColor: 0, fontStyle: 'bold' },
     });
     
     doc.save("reporte_impuestos.pdf");
@@ -170,10 +213,10 @@ export default function TaxReport({ records }: TaxReportProps) {
                 {dateRange?.from ? (
                     dateRange.to ? (
                     <>
-                        {formatDate(dateRange.from)} - {formatDate(dateRange.to)}
+                        {formatDateShort(dateRange.from)} - {formatDateShort(dateRange.to)}
                     </>
                     ) : (
-                    `Desde ${formatDate(dateRange.from)}`
+                    `Desde ${formatDateShort(dateRange.from)}`
                     )
                 ) : (
                     <span>Selecciona un rango de fechas</span>
@@ -234,7 +277,7 @@ export default function TaxReport({ records }: TaxReportProps) {
             {filteredRecords.length > 0 ? (
               filteredRecords.map((record) => (
                 <TableRow key={record.id}>
-                  <TableCell className='whitespace-nowrap'>{formatDate(new Date(record.paymentDate + 'T00:00:00'))}</TableCell>
+                  <TableCell className='whitespace-nowrap'>{formatDateShort(new Date(record.paymentDate + 'T00:00:00'))}</TableCell>
                   <TableCell>{record.description}</TableCell>
                   <TableCell>{record.receiptNumber}</TableCell>
                   <TableCell className='whitespace-nowrap'>{getConsolidatedPeriod(record.settledMonths)}</TableCell>

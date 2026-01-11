@@ -1,7 +1,7 @@
 'use client';
 
 import { useMemo, useState } from 'react';
-import { type TaxRecord } from '@/types';
+import { type TaxRecord, type Settings } from '@/types';
 import {
   Table,
   TableBody,
@@ -37,6 +37,7 @@ import 'jspdf-autotable';
 import { useAuth, useUserRole } from '@/firebase/provider';
 import { initializeFirebase } from '@/firebase';
 import { doc, deleteDoc } from 'firebase/firestore';
+import { useDoc } from '@/firebase/firestore/use-doc';
 
 
 type TaxRecordsTableProps = {
@@ -92,11 +93,21 @@ export default function TaxRecordsTable({ initialRecords, isLoading }: TaxRecord
   const { toast } = useToast();
   const user = useAuth();
   const userRole = useUserRole();
+  const { firestore } = initializeFirebase();
 
   const userIdToUse = useMemo(() => {
     if (!user) return null;
     return userRole === 'super_admin' ? 'default-user' : user.uid;
   }, [user, userRole]);
+
+  const settingsRef = useMemo(() => {
+    if (!userIdToUse) return null;
+    return doc(firestore, `users/${userIdToUse}/settings/general`);
+  }, [userIdToUse, firestore]);
+
+  const { data: settings } = useDoc<Settings>(settingsRef);
+  const companyName = settings?.companyName || 'Mi Empresa';
+  const logoUrl = settings?.logoUrl;
 
   const filteredRecords = useMemo(() => {
     return (initialRecords || []).filter((record) => {
@@ -114,7 +125,7 @@ export default function TaxRecordsTable({ initialRecords, isLoading }: TaxRecord
   
   const handleDelete = async (id: string) => {
     if (!userIdToUse) return;
-    const { firestore } = initializeFirebase();
+    
     const recordRef = doc(firestore, `users/${userIdToUse}/taxRecords`, id);
 
     try {
@@ -153,11 +164,34 @@ export default function TaxRecordsTable({ initialRecords, isLoading }: TaxRecord
   const handleEditSuccess = () => {
     setEditingRecord(null);
   };
+  
+  const addHeaderToPDF = (doc: jsPDF, title: string) => {
+    const emissionDate = format(new Date(), "d MMM yyyy, HH:mm:ss", { locale: es });
+    
+    if (logoUrl) {
+      try {
+        const img = new Image();
+        img.crossOrigin = "Anonymous";
+        img.src = logoUrl;
+        doc.addImage(logoUrl, 'PNG', 14, 12, 20, 20);
+      } catch (e) {
+        console.error("Error loading logo for PDF", e);
+      }
+    }
+    
+    doc.setFontSize(18);
+    doc.text(companyName, logoUrl ? 40 : 14, 22);
+    doc.setFontSize(11);
+    doc.setTextColor(100);
+    doc.text(title, logoUrl ? 40 : 14, 28);
+    doc.text(`Emitido: ${emissionDate}`, doc.internal.pageSize.getWidth() - 14, 28, { align: 'right' });
+  };
+
 
   const exportToPDF = (record: TaxRecord) => {
     const doc = new jsPDF();
-    doc.setFontSize(18);
-    doc.text(`Detalle del Pago de Impuesto`, 14, 22);
+    const reportTitle = `Detalle del Pago de Impuesto - Recibo ${record.receiptNumber}`;
+    addHeaderToPDF(doc, reportTitle);
 
     const tableBody = [
         ['Fecha', formatDate(record.paymentDate)],
@@ -171,7 +205,7 @@ export default function TaxRecordsTable({ initialRecords, isLoading }: TaxRecord
     ];
 
     doc.autoTable({
-        startY: 30,
+        startY: 40,
         body: tableBody,
         theme: 'grid'
     });

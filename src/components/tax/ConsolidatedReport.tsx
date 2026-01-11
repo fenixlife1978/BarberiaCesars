@@ -1,13 +1,18 @@
 'use client';
 import { useMemo, useState } from 'react';
-import { type OperatingExpense, type TaxRecord, expenseCategories, months as monthNames } from '@/types';
-import { getYear, parse } from 'date-fns';
+import { type OperatingExpense, type TaxRecord, expenseCategories, months as monthNames, Settings } from '@/types';
+import { getYear, parse, format } from 'date-fns';
+import { es } from 'date-fns/locale';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Table, TableBody, TableCell, TableFooter, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Button } from '../ui/button';
 import { FileDown } from 'lucide-react';
 import jsPDF from 'jspdf';
 import 'jspdf-autotable';
+import { useAuth, useUserRole } from '@/firebase/provider';
+import { useDoc } from '@/firebase/firestore/use-doc';
+import { doc } from 'firebase/firestore';
+import { initializeFirebase } from '@/firebase';
 
 type ConsolidatedReportProps = {
   taxRecords: TaxRecord[];
@@ -22,9 +27,26 @@ declare module 'jspdf' {
 
 const allCategories: ("Impuestos" | (typeof expenseCategories)[number])[] = ["Impuestos", ...expenseCategories];
 
-
 export default function ConsolidatedReport({ taxRecords, operatingExpenses }: ConsolidatedReportProps) {
   const [selectedYear, setSelectedYear] = useState<string>(() => new Date().getFullYear().toString());
+  const user = useAuth();
+  const userRole = useUserRole();
+  const { firestore } = initializeFirebase();
+
+  const userIdToQuery = useMemo(() => {
+    if (!user) return null;
+    return userRole === 'super_admin' ? 'default-user' : user.uid;
+  }, [user, userRole]);
+
+  const settingsRef = useMemo(() => {
+    if (!userIdToQuery) return null;
+    return doc(firestore, `users/${userIdToQuery}/settings/general`);
+  }, [userIdToQuery, firestore]);
+
+  const { data: settings } = useDoc<Settings>(settingsRef);
+  const companyName = settings?.companyName || 'Mi Empresa';
+  const logoUrl = settings?.logoUrl;
+
 
   const availableYears = useMemo(() => {
     const years = new Set([
@@ -96,10 +118,35 @@ export default function ConsolidatedReport({ taxRecords, operatingExpenses }: Co
     return new Intl.NumberFormat('de-DE', { minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(amount);
   }
 
-  const exportToPDF = () => {
-    const doc = new jsPDF();
+  const addHeaderToPDF = (doc: jsPDF, title: string) => {
+    const emissionDate = format(new Date(), "d MMM yyyy, HH:mm:ss", { locale: es });
+    
+    if (logoUrl) {
+      try {
+        const img = new Image();
+        img.crossOrigin = "Anonymous";
+        img.src = logoUrl;
+        // This is a hacky way to make sure the image is loaded before adding it to the PDF.
+        // A better solution would involve handling image loading async.
+        doc.addImage(logoUrl, 'PNG', 14, 12, 20, 20);
+      } catch (e) {
+        console.error("Error loading logo for PDF", e);
+      }
+    }
+    
     doc.setFontSize(18);
-    doc.text(`Reporte Consolidado - ${selectedYear}`, 14, 22);
+    doc.text(companyName, logoUrl ? 40 : 14, 22);
+    doc.setFontSize(11);
+    doc.setTextColor(100);
+    doc.text(`${title}`, logoUrl ? 40 : 14, 28);
+    doc.text(`Emitido: ${emissionDate}`, doc.internal.pageSize.getWidth() - 14, 28, { align: 'right' });
+  };
+
+
+  const exportToPDF = () => {
+    const doc = new jsPDF('landscape');
+    const reportTitle = `Reporte Consolidado - ${selectedYear}`;
+    addHeaderToPDF(doc, reportTitle);
 
     const tableColumns = ["Mes", ...allCategories, "Total Mes (€)"];
     const tableRows: any[] = [];
@@ -123,10 +170,10 @@ export default function ConsolidatedReport({ taxRecords, operatingExpenses }: Co
         head: [tableColumns],
         body: tableRows,
         foot: [footerRow],
-        startY: 30,
+        startY: 40,
         theme: 'striped',
-        headStyles: { fillColor: [41, 128, 185], textColor: 255 },
-        footStyles: { fillColor: [230, 230, 230], textColor: 0, fontStyle: 'bold' },
+        headStyles: { fillColor: [0, 98, 65], textColor: 255 }, // Dark Green from theme
+        footStyles: { fillColor: [241, 230, 210], textColor: 0, fontStyle: 'bold' }, // Cream background from theme
         styles: { fontSize: 8 },
         bodyStyles: { minCellHeight: 8 },
         alternateRowStyles: { fillColor: [245, 245, 245] },
@@ -155,7 +202,7 @@ export default function ConsolidatedReport({ taxRecords, operatingExpenses }: Co
         </Button>
       </div>
 
-      <div className="rounded-md border">
+      <div className="rounded-md border overflow-x-auto">
         <Table>
           <TableHeader>
             <TableRow>
@@ -169,25 +216,25 @@ export default function ConsolidatedReport({ taxRecords, operatingExpenses }: Co
           <TableBody>
             {monthNames.map((month, index) => (
               <TableRow key={month}>
-                <TableCell className="font-medium">{month}</TableCell>
+                <TableCell className="font-medium whitespace-nowrap">{month}</TableCell>
                 {allCategories.map(cat => (
-                  <TableCell key={cat} className="text-right">
+                  <TableCell key={cat} className="text-right whitespace-nowrap">
                     {formatCurrency(monthlyData[index][cat] || 0)}
                   </TableCell>
                 ))}
-                <TableCell className="text-right font-medium">{formatCurrency(rowTotals[index] || 0)}</TableCell>
+                <TableCell className="text-right font-medium whitespace-nowrap">{formatCurrency(rowTotals[index] || 0)}</TableCell>
               </TableRow>
             ))}
           </TableBody>
           <TableFooter>
             <TableRow className="bg-muted/50">
-              <TableHead className="text-right font-bold text-lg">Totales (€)</TableHead>
+              <TableHead className="font-bold text-lg">Totales (€)</TableHead>
               {allCategories.map(cat => (
-                <TableHead key={cat} className="text-right font-bold text-lg">
+                <TableHead key={cat} className="text-right font-bold text-lg whitespace-nowrap">
                   {formatCurrency(columnTotals[cat])}
                 </TableHead>
               ))}
-              <TableHead className="text-right font-bold text-lg">{formatCurrency(grandTotal)}</TableHead>
+              <TableHead className="text-right font-bold text-lg whitespace-nowrap">{formatCurrency(grandTotal)}</TableHead>
             </TableRow>
           </TableFooter>
         </Table>
