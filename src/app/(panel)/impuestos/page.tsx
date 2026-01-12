@@ -1,15 +1,14 @@
 'use client';
 
-import { useMemo, useState } from 'react';
+import { useMemo, useState, useRef } from 'react';
 import { collection, query, orderBy } from 'firebase/firestore';
 import { useCollection } from '@/firebase/firestore/use-collection';
 import { initializeFirebase } from '@/firebase';
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Plus, ReceiptText, History, BarChart2 } from 'lucide-react';
+import { Plus, ReceiptText, History, BarChart2, FileDown } from 'lucide-react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import BackButton from "@/components/BackButton";
 import TaxForm from "@/components/tax/TaxForm";
 import TaxTable from "@/components/tax/TaxTable";
 import { useAuth } from '@/firebase/provider';
@@ -21,6 +20,7 @@ export default function ImpuestosPage() {
   const { firestore } = initializeFirebase();
   const [isFormOpen, setIsFormOpen] = useState(false);
   const user = useAuth();
+  const chartRef = useRef<HTMLDivElement>(null);
 
   const taxQuery = useMemo(() => {
     if (!user) return null;
@@ -57,8 +57,7 @@ export default function ImpuestosPage() {
 
   return (
     <div className="space-y-6 p-4">
-      <div className="flex justify-between items-center">
-        <BackButton />
+      <div className="flex justify-end items-center">
         <Dialog open={isFormOpen} onOpenChange={setIsFormOpen}>
           <DialogTrigger asChild>
             <Button className="bg-primary hover:bg-primary/90">
@@ -101,7 +100,7 @@ export default function ImpuestosPage() {
                          <Skeleton className="h-full w-full" />
                     </div>
                 ) : (
-                    <ExpensesChart taxRecords={records || []} operatingExpenses={expenses || []} />
+                    <ExpensesChart ref={chartRef} taxRecords={records || []} operatingExpenses={expenses || []} />
                 )}
             </TabsContent>
           </Tabs>

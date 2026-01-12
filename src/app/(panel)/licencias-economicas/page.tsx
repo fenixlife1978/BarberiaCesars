@@ -6,7 +6,6 @@ import { useCollection } from '@/firebase/firestore/use-collection';
 import { initializeFirebase } from '@/firebase';
 import EconomicLicensesTable from "@/components/license/EconomicLicensesTable";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import BackButton from "@/components/BackButton";
 import { Skeleton } from '@/components/ui/skeleton';
 import { EconomicLicense } from '@/types';
 import { useAuth } from '@/firebase/provider';
@@ -24,11 +23,12 @@ export default function LicenciasPage() {
   // RUTA CENTRALIZADA: Apunta a 'users/default-user/economicLicenses'.
   // ESTABILIZACIÓN: La consulta se envuelve en useMemo.
   const licensesQuery = useMemo(() => {
+    if (!user) return null;
     return query(
       collection(firestore, `users/default-user/economicLicenses`),
       orderBy('createdAt', 'desc')
     );
-  }, [firestore]);
+  }, [firestore, user]);
 
   const { data: licenses, isLoading } = useCollection<EconomicLicense>(licensesQuery);
 
@@ -44,8 +44,7 @@ export default function LicenciasPage() {
 
   return (
     <div className="container mx-auto space-y-6 p-4 md:p-8">
-      <div className="flex justify-between items-center">
-        <BackButton />
+      <div className="flex justify-end items-center">
         <Dialog open={isFormOpen} onOpenChange={setIsFormOpen}>
           <DialogTrigger asChild>
             <Button>

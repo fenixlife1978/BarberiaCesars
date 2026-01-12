@@ -7,7 +7,6 @@ import { initializeFirebase } from '@/firebase';
 import TaxReport from "@/components/tax/TaxReport";
 import ConsolidatedReport from "@/components/tax/ConsolidatedReport";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import BackButton from "@/components/BackButton";
 import { Skeleton } from '@/components/ui/skeleton';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { OperatingExpense, TaxRecord } from '@/types';
@@ -48,9 +47,6 @@ export default function ReportesPage() {
   if (!user) {
     return (
         <div className="space-y-6 p-4">
-            <div className="flex justify-start">
-                <BackButton />
-            </div>
             <Card className="shadow-lg border-none">
                 <CardHeader className="bg-slate-50/50">
                     <CardTitle className="text-2xl font-bold text-primary">Reportes</CardTitle>
@@ -65,9 +61,6 @@ export default function ReportesPage() {
 
   return (
     <div className="space-y-6 p-4">
-      <div className="flex justify-start">
-        <BackButton />
-      </div>
       <Card className="shadow-lg border-none">
         <CardHeader className="bg-slate-50/50">
           <CardTitle className="text-2xl font-bold text-primary">Reportes</CardTitle>
