@@ -4,7 +4,6 @@ import { useEffect } from 'react';
 import Header from "@/components/layout/Header";
 import { useAuth } from "@/firebase/provider";
 import { Loader2 } from 'lucide-react';
-import { FirebaseErrorListener } from '@/components/FirebaseErrorListener';
 
 export default function PanelLayout({
   children,
@@ -36,7 +35,6 @@ export default function PanelLayout({
   if (user) {
       return (
         <div className="min-h-screen flex flex-col">
-          <FirebaseErrorListener />
           <Header />
           <main className="flex-grow container mx-auto p-4 md:p-8">
             {children}

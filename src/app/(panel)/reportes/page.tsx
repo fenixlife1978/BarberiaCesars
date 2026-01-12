@@ -18,9 +18,8 @@ export default function ReportesPage() {
 
   // TAX RECORDS: Ruta centralizada en default-user
   const taxRecordsRef = useMemo(() => {
-    if (!user) return null;
     return collection(firestore, `users/default-user/taxRecords`);
-  }, [firestore, user]);
+  }, [firestore]);
 
   const taxRecordsQuery = useMemo(() => {
     if (!taxRecordsRef) return null;
@@ -31,9 +30,8 @@ export default function ReportesPage() {
 
   // EXPENSES: Ruta centralizada en default-user
   const expensesRef = useMemo(() => {
-    if (!user) return null;
     return collection(firestore, `users/default-user/operatingExpenses`);
-  }, [firestore, user]);
+  }, [firestore]);
 
   const expensesQuery = useMemo(() => {
     if (!expensesRef) return null;

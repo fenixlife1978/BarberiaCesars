@@ -12,7 +12,7 @@ import {
 } from '@/components/ui/table';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
-import { FilterX, FileDown, Trash2, Loader2 } from 'lucide-react';
+import { FilterX, FileDown, Trash2, Loader2, Eye, Pencil } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { jsPDF } from 'jspdf';
 import 'jspdf-autotable';
@@ -31,6 +31,9 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '../ui/dialog';
+import TaxForm from './TaxForm';
+import { ScrollArea } from '../ui/scroll-area';
 
 interface TaxTableProps {
   records: TaxRecord[]; 
@@ -41,6 +44,7 @@ export default function TaxTable({ records = [], isLoading }: TaxTableProps) {
   const [filter, setFilter] = useState('');
   const { toast } = useToast();
   const { firestore } = initializeFirebase();
+  const [editingRecord, setEditingRecord] = useState<TaxRecord | null>(null);
 
   // Settings de la empresa (Ruta corregida a default-user)
   const { data: settings } = useDoc<Settings>(doc(firestore, `users/default-user/settings/general`));
@@ -61,6 +65,10 @@ export default function TaxTable({ records = [], isLoading }: TaxTableProps) {
     } catch (error) {
       toast({ variant: 'destructive', title: 'Error', description: 'Error de permisos o conexión.' });
     }
+  };
+
+  const handleEditSuccess = () => {
+    setEditingRecord(null);
   };
 
   const formatCurrency = (amount: number) => {
@@ -151,6 +159,8 @@ export default function TaxTable({ records = [], isLoading }: TaxTableProps) {
                   </TableCell>
                   <TableCell className="text-center">
                     <div className="flex justify-center gap-2">
+                       <Button variant="ghost" size="icon" onClick={() => setEditingRecord(rec)}><Pencil className="h-4 w-4" /></Button>
+
                       <Button 
                         variant="ghost" 
                         size="icon" 
@@ -192,6 +202,16 @@ export default function TaxTable({ records = [], isLoading }: TaxTableProps) {
           </TableBody>
         </Table>
       </div>
+      {editingRecord && (
+        <Dialog open={!!editingRecord} onOpenChange={(open) => !open && setEditingRecord(null)}>
+          <DialogContent className="max-w-3xl">
+            <DialogHeader><DialogTitle>Editar Pago</DialogTitle></DialogHeader>
+            <ScrollArea className="max-h-[70vh] p-4">
+              <TaxForm isEditMode initialData={editingRecord} onSuccess={handleEditSuccess} />
+            </ScrollArea>
+          </DialogContent>
+        </Dialog>
+      )}
     </div>
   );
 }

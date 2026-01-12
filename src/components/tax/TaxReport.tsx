@@ -124,6 +124,9 @@ export default function TaxReport({ records }: TaxReportProps) {
     
     if (logoUrl) {
       try {
+        const img = new Image();
+        img.crossOrigin = "Anonymous";
+        img.src = logoUrl;
         doc.addImage(logoUrl, 'PNG', 14, 12, 20, 20);
       } catch (e) {
         console.error("Error loading logo for PDF", e);

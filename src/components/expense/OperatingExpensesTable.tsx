@@ -41,6 +41,7 @@ import { doc } from 'firebase/firestore';
 import OperatingExpenseForm from './OperatingExpenseForm';
 import { Badge } from '../ui/badge';
 import { deleteDocumentNonBlocking } from '@/firebase/non-blocking-updates';
+import { useAuth } from '@/firebase/provider';
 
 type OperatingExpensesTableProps = {
   initialExpenses: OperatingExpense[];
@@ -86,6 +87,7 @@ export default function OperatingExpensesTable({ initialExpenses, isLoading }: O
   const [filter, setFilter] = useState('');
   const [editingExpense, setEditingExpense] = useState<OperatingExpense | null>(null);
   const { toast } = useToast();
+  const user = useAuth();
 
   const filteredExpenses = useMemo(() => {
     return (initialExpenses || []).filter((expense) => {
@@ -100,6 +102,7 @@ export default function OperatingExpensesTable({ initialExpenses, isLoading }: O
 
   const handleDelete = async (id: string) => {
     const { firestore } = initializeFirebase();
+    // RUTA CENTRALIZADA
     const expenseRef = doc(firestore, `users/default-user/operatingExpenses`, id);
     
     try {
@@ -140,6 +143,8 @@ export default function OperatingExpensesTable({ initialExpenses, isLoading }: O
       return "Fecha inválida";
     }
   }
+
+  if (!user) return null;
 
   return (
     <div className="space-y-4">

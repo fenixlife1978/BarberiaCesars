@@ -23,12 +23,11 @@ export default function LicenciasPage() {
   // RUTA CENTRALIZADA: Apunta a 'users/default-user/economicLicenses'.
   // ESTABILIZACIÓN: La consulta se envuelve en useMemo.
   const licensesQuery = useMemo(() => {
-    if (!user) return null;
     return query(
       collection(firestore, `users/default-user/economicLicenses`),
       orderBy('createdAt', 'desc')
     );
-  }, [firestore, user]);
+  }, [firestore]);
 
   const { data: licenses, isLoading } = useCollection<EconomicLicense>(licensesQuery);
 

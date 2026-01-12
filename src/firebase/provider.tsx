@@ -4,6 +4,7 @@ import { initializeFirebase } from '.';
 import React, { createContext, useContext, useEffect, useState } from 'react';
 import { onIdTokenChanged, User } from 'firebase/auth';
 import { doc, onSnapshot } from 'firebase/firestore';
+import { FirebaseErrorListener } from '@/components/FirebaseErrorListener';
 
 const AuthContext = createContext<User | null | undefined>(undefined);
 const UserRoleContext = createContext<string | null>(null);
@@ -26,11 +27,10 @@ export function FirebaseProvider({ children }: { children: React.ReactNode }) {
           const roleFromClaim = idTokenResult.claims.role as string || null;
           setUserRole(roleFromClaim);
 
-          // 3. Escuchamos el documento del usuario (Tu UID: OLgPD8W3QsOLqqFc447jTVhsFrm1)
+          // 3. Escuchamos el documento del usuario para datos adicionales
           const userDocRef = doc(firestore, 'users', currentUser.uid);
           const unsubscribeDoc = onSnapshot(userDocRef, (docSnap) => {
             if (docSnap.exists()) {
-               // Aquí podrías guardar datos adicionales si los necesitas
                console.log("Datos de usuario cargados:", docSnap.data());
             }
           }, (error) => {
@@ -54,6 +54,7 @@ export function FirebaseProvider({ children }: { children: React.ReactNode }) {
   return (
     <AuthContext.Provider value={user}>
       <UserRoleContext.Provider value={userRole}>
+        <FirebaseErrorListener />
         {children}
       </UserRoleContext.Provider>
     </AuthContext.Provider>

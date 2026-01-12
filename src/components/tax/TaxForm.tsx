@@ -5,11 +5,9 @@ import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import Image from 'next/image';
 import {
-  addDoc,
   collection,
   doc,
   serverTimestamp,
-  updateDoc
 } from "firebase/firestore";
 
 import { taxRecordSchema, taxRecordWithIdSchema, type TaxRecord, type TaxRecordFormValues, months } from '@/types';
@@ -25,6 +23,7 @@ import { initializeFirebase } from '@/firebase';
 import { addDocumentNonBlocking, updateDocumentNonBlocking } from '@/firebase/non-blocking-updates';
 import { generateTaxDescription } from '@/ai/flows/generate-tax-description';
 import { Textarea } from '../ui/textarea';
+import { useAuth } from '@/firebase/provider';
 
 function SubmitButton({ isPending, isEditMode }: { isPending: boolean, isEditMode: boolean }) {
   return (
@@ -47,6 +46,7 @@ export default function TaxForm({ isEditMode = false, initialData, onSuccess }: 
   const formRef = useRef<HTMLFormElement>(null);
   const [previews, setPreviews] = useState<string[]>(initialData?.documents || []);
   const [isGenerating, setIsGenerating] = useState(false);
+  const user = useAuth();
 
   const currentYear = new Date().getFullYear();
   const [selectedYear, setSelectedYear] = useState(
@@ -169,6 +169,8 @@ export default function TaxForm({ isEditMode = false, initialData, onSuccess }: 
       }
     });
   };
+
+  if (!user) return null;
 
   return (
     <Form {...form}>

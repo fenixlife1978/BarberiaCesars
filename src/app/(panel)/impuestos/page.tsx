@@ -23,22 +23,20 @@ export default function ImpuestosPage() {
   const chartRef = useRef<HTMLDivElement>(null);
 
   const taxQuery = useMemo(() => {
-    if (!user) return null;
     // RUTA CENTRALIZADA: Apunta a 'users/default-user/taxRecords'
     return query(
       collection(firestore, `users/default-user/taxRecords`),
       orderBy('createdAt', 'desc')
     );
-  }, [firestore, user]);
+  }, [firestore]);
 
   const expensesQuery = useMemo(() => {
-    if (!user) return null;
     // RUTA CENTRALIZADA: Apunta a 'users/default-user/operatingExpenses'
     return query(
         collection(firestore, 'users/default-user/operatingExpenses'),
         orderBy('date', 'desc')
     );
-  }, [firestore, user]);
+  }, [firestore]);
 
   const { data: records, isLoading: isLoadingTaxes } = useCollection<TaxRecord>(taxQuery);
   const { data: expenses, isLoading: isLoadingExpenses } = useCollection<OperatingExpense>(expensesQuery);

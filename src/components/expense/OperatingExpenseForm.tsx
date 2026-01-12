@@ -145,7 +145,6 @@ export default function OperatingExpenseForm({ isEditMode = false, initialData, 
                 addDocumentNonBlocking(expensesCollection, {
                     ...values,
                     createdAt: serverTimestamp(),
-                    authorId: user.uid, // Guardamos quién lo creó para auditoría
                 });
                 toast({title: 'Éxito', description: 'Gasto agregado a base central.'});
                 
@@ -171,6 +170,8 @@ export default function OperatingExpenseForm({ isEditMode = false, initialData, 
   
   const isPredefined = predefinedExpenseDescriptions.includes(currentDescription as any);
   const selectValue = showCustomDescription ? 'otra' : (isPredefined ? currentDescription : '');
+
+  if (!user) return null;
 
   return (
     <Form {...form}>

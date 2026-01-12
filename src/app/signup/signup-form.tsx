@@ -3,8 +3,8 @@
 import { useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { getAuth, createUserWithEmailAndPassword, AuthError } from 'firebase/auth';
-import { getFirestore, doc, setDoc, serverTimestamp } from 'firebase/firestore';
+import { createUserWithEmailAndPassword, AuthError } from 'firebase/auth';
+import { doc, setDoc, serverTimestamp } from 'firebase/firestore';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -54,32 +54,24 @@ export default function SignupForm() {
               createdAt: serverTimestamp(),
             };
             
+            // Asigna el rol de super_admin solo si el email coincide
             if (email === 'vallecondo@gmail.com') {
                 userDocData.role = 'super_admin';
             }
 
-            // Create user document in Firestore from the client
+            // Crea el documento de usuario en Firestore
             const userDocRef = doc(firestore, "users", user.uid);
             await setDoc(userDocRef, userDocData);
 
+            // Si es el super_admin, llama a la Server Action para establecer el custom claim
             if (email === 'vallecondo@gmail.com') {
-                try {
-                    // This is a server action to set a custom claim.
-                    await setSuperAdminClaim(user.uid);
-                    // Force refresh the token to get the new claim immediately
-                    await user.getIdToken(true);
-                    console.log("Super admin claim set and token refreshed.");
-                } catch (claimError) {
-                    console.error("Failed to set super admin claim:", claimError);
-                    toast({
-                        variant: 'destructive',
-                        title: 'Error de Permisos',
-                        description: 'No se pudo asignar el rol de superadministrador.',
-                    });
-                }
+                await setSuperAdminClaim(user.uid);
+                // Forzar la actualización del token para obtener el nuevo claim inmediatamente
+                await user.getIdToken(true);
+                console.log("Super admin claim set and token refreshed.");
             }
 
-            // Redirect after successful signup, PanelLayout will handle the auth state change
+            // Redirige al panel principal después del registro exitoso
             router.push('/impuestos');
 
         } catch (e) {
@@ -87,6 +79,8 @@ export default function SignupForm() {
             let errorMessage = 'Error al registrar el usuario. Por favor, inténtalo de nuevo.';
             if (error.code === 'auth/email-already-in-use') {
                 errorMessage = 'El correo electrónico ya está en uso.';
+            } else if (error.code) {
+                errorMessage = `Error: ${error.code}`;
             }
             setError(errorMessage);
             toast({

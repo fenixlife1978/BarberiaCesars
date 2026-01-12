@@ -124,7 +124,6 @@ export default function EconomicLicenseForm({ isEditMode = false, initialData, o
                 addDocumentNonBlocking(licensesCollection, {
                     ...values,
                     createdAt: serverTimestamp(),
-                    authorId: user.uid,
                 });
                 toast({title: 'Éxito', description: 'Licencia agregada a base central.'});
                 reset();

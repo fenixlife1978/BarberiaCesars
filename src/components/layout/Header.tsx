@@ -18,8 +18,8 @@ function LogoutButton() {
   const handleLogout = async () => {
     const { auth } = initializeFirebase();
     try {
-      router.push('/login');
       await signOut(auth);
+      router.push('/login');
     } catch (error) {
       console.error("Error al cerrar sesión:", error);
     }
@@ -99,6 +99,14 @@ export default function Header() {
                 <Button variant="ghost" className="justify-start" asChild><Link href="/gastos-operacion"><ShoppingCart className="mr-2 h-4 w-4"/> Gastos</Link></Button>
                 <Button variant="ghost" className="justify-start" asChild><Link href="/reportes"><BarChart2 className="mr-2 h-4 w-4"/> Reportes</Link></Button>
                 <Button variant="ghost" className="justify-start" asChild><Link href="/licencias-economicas"><FileText className="mr-2 h-4 w-4"/> Licencias</Link></Button>
+                {isAdmin && (
+                  <>
+                    <div className="my-2 border-t" />
+                    <Button variant="ghost" className="justify-start bg-white/10" asChild>
+                      <Link href="/admin"><ShieldCheck className="mr-2 h-4 w-4" />Admin</Link>
+                    </Button>
+                  </>
+                )}
                 <div className="my-2 border-t" />
                 <Button variant="ghost" className="justify-start" asChild><Link href="/ajustes"><Settings className="mr-2 h-4 w-4"/> Ajustes</Link></Button>
                 <LogoutButton />
