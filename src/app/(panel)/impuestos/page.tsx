@@ -24,6 +24,7 @@ export default function ImpuestosPage() {
 
   const taxQuery = useMemo(() => {
     if (!user) return null;
+    // RUTA CENTRALIZADA: Apunta a 'users/default-user/taxRecords'
     return query(
       collection(firestore, `users/default-user/taxRecords`),
       orderBy('createdAt', 'desc')
@@ -32,6 +33,7 @@ export default function ImpuestosPage() {
 
   const expensesQuery = useMemo(() => {
     if (!user) return null;
+    // RUTA CENTRALIZADA: Apunta a 'users/default-user/operatingExpenses'
     return query(
         collection(firestore, 'users/default-user/operatingExpenses'),
         orderBy('date', 'desc')
@@ -43,6 +45,7 @@ export default function ImpuestosPage() {
   
   const isLoading = isLoadingTaxes || isLoadingExpenses;
 
+  // PROTECCIÓN LOGOUT: Evita errores si el usuario no está autenticado.
   if (!user) {
     return (
         <div className="space-y-6 p-4">
