@@ -6,7 +6,7 @@ import { useCollection } from '@/firebase/firestore/use-collection';
 import { initializeFirebase } from '@/firebase';
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Plus, ReceiptText, History } from 'lucide-react';
+import { Plus, ReceiptText, History, BarChart2 } from 'lucide-react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import BackButton from "@/components/BackButton";
@@ -14,13 +14,14 @@ import TaxForm from "@/components/tax/TaxForm";
 import TaxTable from "@/components/tax/TaxTable";
 import { useAuth } from '@/firebase/provider';
 import { Skeleton } from '@/components/ui/skeleton';
+import { OperatingExpense, TaxRecord } from '@/types';
+import ExpensesChart from '@/components/tax/ExpensesChart';
 
 export default function ImpuestosPage() {
   const { firestore } = initializeFirebase();
   const [isFormOpen, setIsFormOpen] = useState(false);
   const user = useAuth();
 
-  // CONSULTA CENTRALIZADA CORREGIDA A: default-user
   const taxQuery = useMemo(() => {
     if (!user) return null;
     return query(
@@ -29,7 +30,18 @@ export default function ImpuestosPage() {
     );
   }, [firestore, user]);
 
-  const { data: records, isLoading } = useCollection<any>(taxQuery);
+  const expensesQuery = useMemo(() => {
+    if (!user) return null;
+    return query(
+        collection(firestore, 'users/default-user/operatingExpenses'),
+        orderBy('date', 'desc')
+    );
+  }, [firestore, user]);
+
+  const { data: records, isLoading: isLoadingTaxes } = useCollection<TaxRecord>(taxQuery);
+  const { data: expenses, isLoading: isLoadingExpenses } = useCollection<OperatingExpense>(expensesQuery);
+  
+  const isLoading = isLoadingTaxes || isLoadingExpenses;
 
   if (!user) {
     return (
@@ -71,17 +83,23 @@ export default function ImpuestosPage() {
               <TabsTrigger value="historial" className="flex items-center gap-2">
                 <History className="h-4 w-4" /> Historial
               </TabsTrigger>
-              <TabsTrigger value="resumen">Estadísticas</TabsTrigger>
+              <TabsTrigger value="resumen" className="flex items-center gap-2">
+                <BarChart2 className="h-4 w-4" /> Estadísticas
+              </TabsTrigger>
             </TabsList>
 
             <TabsContent value="historial">
-              <TaxTable records={records || []} isLoading={isLoading} />
+              <TaxTable records={records || []} isLoading={isLoadingTaxes} />
             </TabsContent>
 
             <TabsContent value="resumen">
-                <div className="text-center py-20 text-muted-foreground border-2 border-dashed rounded-xl">
-                    Panel de estadísticas en desarrollo.
-                </div>
+                {isLoading ? (
+                    <div className="flex justify-center items-center h-64">
+                         <Skeleton className="h-full w-full" />
+                    </div>
+                ) : (
+                    <ExpensesChart taxRecords={records || []} operatingExpenses={expenses || []} />
+                )}
             </TabsContent>
           </Tabs>
         </CardContent>
