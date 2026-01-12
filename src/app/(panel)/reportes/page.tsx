@@ -11,16 +11,20 @@ import BackButton from "@/components/BackButton";
 import { Skeleton } from '@/components/ui/skeleton';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { OperatingExpense, TaxRecord } from '@/types';
+import { useAuth } from '@/firebase/provider';
 
 export default function ReportesPage() {
   const { firestore } = initializeFirebase();
+  const user = useAuth();
 
   // TAX RECORDS: Ruta centralizada en default-user
   const taxRecordsRef = useMemo(() => {
+    if (!user) return null;
     return collection(firestore, `users/default-user/taxRecords`);
-  }, [firestore]);
+  }, [firestore, user]);
 
   const taxRecordsQuery = useMemo(() => {
+    if (!taxRecordsRef) return null;
     return query(taxRecordsRef, orderBy('paymentDate', 'desc'));
   }, [taxRecordsRef]);
 
@@ -28,16 +32,36 @@ export default function ReportesPage() {
 
   // EXPENSES: Ruta centralizada en default-user
   const expensesRef = useMemo(() => {
+    if (!user) return null;
     return collection(firestore, `users/default-user/operatingExpenses`);
-  }, [firestore]);
+  }, [firestore, user]);
 
   const expensesQuery = useMemo(() => {
+    if (!expensesRef) return null;
     return query(expensesRef, orderBy('date', 'desc'));
   }, [expensesRef]);
 
   const { data: expenses, isLoading: isLoadingExpenses } = useCollection<OperatingExpense>(expensesQuery);
 
   const isLoading = isLoadingTax || isLoadingExpenses;
+  
+  if (!user) {
+    return (
+        <div className="space-y-6 p-4">
+            <div className="flex justify-start">
+                <BackButton />
+            </div>
+            <Card className="shadow-lg border-none">
+                <CardHeader className="bg-slate-50/50">
+                    <CardTitle className="text-2xl font-bold text-primary">Reportes</CardTitle>
+                </CardHeader>
+                <CardContent className="p-6">
+                     <Skeleton className="h-64 w-full" />
+                </CardContent>
+            </Card>
+        </div>
+    )
+  }
 
   return (
     <div className="space-y-6 p-4">

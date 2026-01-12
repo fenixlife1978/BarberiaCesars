@@ -15,8 +15,9 @@ export default function OperatingExpensesPage() {
 
   // RUTA CENTRALIZADA: Apunta a 'users/default-user/operatingExpenses'.
   const expensesRef = useMemo(() => {
+    if (!user) return null;
     return collection(firestore, `users/default-user/operatingExpenses`);
-  }, [firestore]);
+  }, [firestore, user]);
   
   // ESTABILIZACIÓN: La consulta se envuelve en useMemo.
   const expensesQuery = useMemo(() => {

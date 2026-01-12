@@ -12,20 +12,33 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import BackButton from "@/components/BackButton";
 import TaxForm from "@/components/tax/TaxForm";
 import TaxTable from "@/components/tax/TaxTable";
+import { useAuth } from '@/firebase/provider';
+import { Skeleton } from '@/components/ui/skeleton';
 
 export default function ImpuestosPage() {
   const { firestore } = initializeFirebase();
   const [isFormOpen, setIsFormOpen] = useState(false);
+  const user = useAuth();
 
   // CONSULTA CENTRALIZADA CORREGIDA A: default-user
   const taxQuery = useMemo(() => {
+    if (!user) return null;
     return query(
       collection(firestore, `users/default-user/taxRecords`),
       orderBy('createdAt', 'desc')
     );
-  }, [firestore]);
+  }, [firestore, user]);
 
   const { data: records, isLoading } = useCollection<any>(taxQuery);
+
+  if (!user) {
+    return (
+        <div className="space-y-6 p-4">
+            <Skeleton className="h-10 w-48" />
+            <Skeleton className="h-96 w-full" />
+        </div>
+    )
+  }
 
   return (
     <div className="space-y-6 p-4">
