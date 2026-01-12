@@ -1,21 +1,18 @@
-import { initializeApp, getApps, App, applicationDefault, getApp } from 'firebase-admin/app';
+// La directiva 'server-only' asegura que este archivo nunca se filtre al navegador
+import 'server-only';
+import { initializeApp, getApps, App, getApp } from 'firebase-admin/app';
+
+const projectId = "studio-9155034390-c4587";
 
 let adminApp: App;
 
-if (process.env.NODE_ENV === 'production') {
-    if (getApps().length === 0) {
-        adminApp = initializeApp({
-            credential: applicationDefault(),
-        });
-    } else {
-        adminApp = getApp();
-    }
+// Lógica de inicialización segura para el servidor (Node.js)
+if (getApps().length === 0) {
+    adminApp = initializeApp({
+        projectId: projectId
+    });
 } else {
-    // En desarrollo, es posible que las credenciales no estén disponibles.
-    // La acción de servidor que lo usa se protegerá contra esto.
-    if (getApps().length > 0) {
-        adminApp = getApp();
-    }
+    adminApp = getApp();
 }
 
 

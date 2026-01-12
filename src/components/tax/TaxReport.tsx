@@ -23,7 +23,6 @@ import { cn } from '@/lib/utils';
 import { months } from '@/types';
 import { jsPDF } from 'jspdf';
 import 'jspdf-autotable';
-import { useAuth } from '@/firebase/provider';
 import { useDoc } from '@/firebase/firestore/use-doc';
 import { doc } from 'firebase/firestore';
 import { initializeFirebase } from '@/firebase';
@@ -42,13 +41,12 @@ declare module 'jspdf' {
 export default function TaxReport({ records }: TaxReportProps) {
   const [dateRange, setDateRange] = useState<DateRange | undefined>();
   const [selectedYear, setSelectedYear] = useState<string>('all');
-  const user = useAuth();
   const { firestore } = initializeFirebase();
   
+  // RUTA CENTRALIZADA CORREGIDA: default-user para leer settings globales
   const settingsRef = useMemo(() => {
-    if (!user) return null;
-    return doc(firestore, `users/${user.uid}/settings/general`);
-  }, [user, firestore]);
+    return doc(firestore, `users/default-user/settings/general`);
+  }, [firestore]);
 
   const { data: settings } = useDoc<Settings>(settingsRef);
   const companyName = settings?.companyName || 'Mi Empresa';
@@ -68,7 +66,7 @@ export default function TaxReport({ records }: TaxReportProps) {
       return 'N/A';
     }
 
-    const sortedMonths = settledMonths.sort((a, b) => {
+    const sortedMonths = [...settledMonths].sort((a, b) => {
       const [monthA, yearA] = a.split('-');
       const [monthB, yearB] = b.split('-');
       
@@ -106,8 +104,8 @@ export default function TaxReport({ records }: TaxReportProps) {
 
   const totals = useMemo(() => {
     return filteredRecords.reduce((acc, record) => {
-        acc.euros += record.amountEuros;
-        acc.bolivares += record.amountBolivares;
+        acc.euros += record.amountEuros || 0;
+        acc.bolivares += record.amountBolivares || 0;
         return acc;
     }, { euros: 0, bolivares: 0 });
   }, [filteredRecords]);
@@ -126,9 +124,6 @@ export default function TaxReport({ records }: TaxReportProps) {
     
     if (logoUrl) {
       try {
-        const img = new Image();
-        img.crossOrigin = "Anonymous";
-        img.src = logoUrl;
         doc.addImage(logoUrl, 'PNG', 14, 12, 20, 20);
       } catch (e) {
         console.error("Error loading logo for PDF", e);
@@ -254,7 +249,7 @@ export default function TaxReport({ records }: TaxReportProps) {
       </div>
 
       {/* Results */}
-      <div className="rounded-md border">
+      <div className="rounded-md border bg-white">
         <Table>
           <TableHeader>
             <TableRow>

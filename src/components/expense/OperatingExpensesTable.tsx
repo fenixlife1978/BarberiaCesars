@@ -36,13 +36,11 @@ import {
 import { ScrollArea } from '../ui/scroll-area';
 import Image from 'next/image';
 import { useToast } from '@/hooks/use-toast';
-import { useAuth } from '@/firebase/provider';
 import { initializeFirebase } from '@/firebase';
-import { doc, deleteDoc } from 'firebase/firestore';
+import { doc } from 'firebase/firestore';
 import OperatingExpenseForm from './OperatingExpenseForm';
 import { Badge } from '../ui/badge';
 import { deleteDocumentNonBlocking } from '@/firebase/non-blocking-updates';
-
 
 type OperatingExpensesTableProps = {
   initialExpenses: OperatingExpense[];
@@ -64,7 +62,7 @@ function DocumentPreviewDialog({ src }: { src: string }) {
     return (
         <Dialog open={open} onOpenChange={setOpen}>
             <DialogTrigger asChild>
-                <button className="relative w-full h-full">
+                <button className="relative w-full h-full min-h-[100px]">
                     <Image src={src} alt="Documento" width={200} height={200} className="object-contain rounded-md border w-full h-full" />
                 </button>
             </DialogTrigger>
@@ -88,7 +86,6 @@ export default function OperatingExpensesTable({ initialExpenses, isLoading }: O
   const [filter, setFilter] = useState('');
   const [editingExpense, setEditingExpense] = useState<OperatingExpense | null>(null);
   const { toast } = useToast();
-  const user = useAuth();
 
   const filteredExpenses = useMemo(() => {
     return (initialExpenses || []).filter((expense) => {
@@ -102,14 +99,14 @@ export default function OperatingExpensesTable({ initialExpenses, isLoading }: O
   }, [initialExpenses, filter]);
 
   const handleDelete = async (id: string) => {
-    if (!user) return;
     const { firestore } = initializeFirebase();
-    const expenseRef = doc(firestore, `users/${user.uid}/operatingExpenses`, id);
+    const expenseRef = doc(firestore, `users/default-user/operatingExpenses`, id);
+    
     try {
         deleteDocumentNonBlocking(expenseRef);
         toast({
             title: 'Éxito',
-            description: 'Gasto eliminado con éxito.',
+            description: 'Gasto eliminado de la base de datos central.',
         });
     } catch (error) {
         toast({
@@ -129,7 +126,11 @@ export default function OperatingExpensesTable({ initialExpenses, isLoading }: O
   };
   
   const formatCurrency = (amount: number, currency = 'EUR') => {
-    return new Intl.NumberFormat('de-DE', { style: 'currency', currency }).format(amount);
+    return new Intl.NumberFormat('de-DE', { 
+      style: 'currency', 
+      currency,
+      minimumFractionDigits: 2 
+    }).format(amount);
   }
   
   const formatDate = (dateString: string) => {
@@ -154,10 +155,11 @@ export default function OperatingExpensesTable({ initialExpenses, isLoading }: O
           Limpiar
         </Button>
       </div>
-      <div className="rounded-md border">
+
+      <div className="rounded-md border bg-white shadow-sm">
         <Table>
           <TableHeader>
-            <TableRow>
+            <TableRow className="bg-slate-50">
               <TableHead>Fecha</TableHead>
               <TableHead>Descripción</TableHead>
               <TableHead>Categoría</TableHead>
@@ -174,76 +176,87 @@ export default function OperatingExpensesTable({ initialExpenses, isLoading }: O
                 </TableRow>
             ) : filteredExpenses.length > 0 ? (
               filteredExpenses.map((expense) => (
-                <TableRow key={expense.id}>
+                <TableRow key={expense.id} className="hover:bg-slate-50/50">
                   <TableCell className="font-medium whitespace-nowrap">{formatDate(expense.date)}</TableCell>
-                  <TableCell>{expense.description}</TableCell>
+                  <TableCell className="max-w-[200px] truncate">{expense.description}</TableCell>
                   <TableCell><Badge variant="secondary">{expense.category}</Badge></TableCell>
-                  <TableCell className="text-right font-medium whitespace-nowrap">{formatCurrency(expense.amountEuros)}</TableCell>
+                  <TableCell className="text-right font-bold text-emerald-700 whitespace-nowrap">
+                    {formatCurrency(expense.amountEuros)}
+                  </TableCell>
                   <TableCell className="text-center">
-                    <Dialog>
-                      <DialogTrigger asChild>
-                        <Button variant="ghost" size="icon" aria-label="Ver detalles">
-                           <Eye className="h-4 w-4" />
-                        </Button>
-                      </DialogTrigger>
-                      <DialogContent className="max-w-xl">
-                        <DialogHeader>
-                          <DialogTitle>Detalles del Gasto</DialogTitle>
-                        </DialogHeader>
-                        <ScrollArea className="max-h-[70vh] p-4">
-                          <div className="space-y-4 text-sm">
-                            <p><strong className="font-medium text-muted-foreground">Fecha:</strong> {formatDate(expense.date)}</p>
-                            <p><strong className="font-medium text-muted-foreground">Descripción:</strong> {expense.description}</p>
-                            <p><strong className="font-medium text-muted-foreground">Categoría:</strong> <Badge variant="outline">{expense.category}</Badge></p>
-                            <p><strong className="font-medium text-muted-foreground">Monto (Bs.):</strong> {formatCurrency(expense.amountBolivares, 'VES')}</p>
-                            <p><strong className="font-medium text-muted-foreground">Tasa BCV:</strong> {formatCurrency(expense.bcvRate, 'VES')}</p>
-                            <p><strong className="font-medium text-muted-foreground">Monto (€):</strong> {formatCurrency(expense.amountEuros, 'EUR')}</p>
-
-                            {expense.documents && expense.documents.length > 0 && (
-                                <div>
-                                    <strong className="font-medium text-muted-foreground">Documentos Adjuntos:</strong>
-                                    <div className="mt-2 grid grid-cols-2 md:grid-cols-3 gap-4">
-                                      {expense.documents.map((doc, index) => (
-                                          <div key={index} className="relative aspect-square">
-                                            <DocumentPreviewDialog src={doc} />
-                                          </div>
-                                      ))}
-                                    </div>
-                                </div>
-                            )}
-                          </div>
-                        </ScrollArea>
-                      </DialogContent>
-                    </Dialog>
-                    <Button variant="ghost" size="icon" aria-label="Editar gasto" onClick={() => setEditingExpense(expense)}>
-                        <Pencil className="h-4 w-4" />
-                    </Button>
-                    <AlertDialog>
-                        <AlertDialogTrigger asChild>
-                            <Button variant="ghost" size="icon" aria-label="Eliminar gasto">
-                                <Trash2 className="h-4 w-4 text-destructive" />
+                    <div className="flex justify-center gap-1">
+                        <Dialog>
+                          <DialogTrigger asChild>
+                            <Button variant="ghost" size="icon">
+                               <Eye className="h-4 w-4" />
                             </Button>
-                        </AlertDialogTrigger>
-                        <AlertDialogContent>
-                            <AlertDialogHeader>
-                            <AlertDialogTitle>¿Estás seguro?</AlertDialogTitle>
-                            <AlertDialogDescription>
-                                Esta acción no se puede deshacer. Se eliminará permanentemente el registro del gasto.
-                            </AlertDialogDescription>
-                            </AlertDialogHeader>
-                            <AlertDialogFooter>
-                            <AlertDialogCancel>Cancelar</AlertDialogCancel>
-                            <AlertDialogAction onClick={() => handleDelete(expense.id)} className="bg-destructive hover:bg-destructive/90">Eliminar</AlertDialogAction>
-                            </AlertDialogFooter>
-                        </AlertDialogContent>
-                    </AlertDialog>
+                          </DialogTrigger>
+                          <DialogContent className="max-w-xl">
+                            <DialogHeader>
+                              <DialogTitle>Detalles del Gasto</DialogTitle>
+                            </DialogHeader>
+                            <ScrollArea className="max-h-[70vh] p-4">
+                              <div className="space-y-4 text-sm">
+                                <p><strong className="text-muted-foreground">Fecha:</strong> {formatDate(expense.date)}</p>
+                                <p><strong className="text-muted-foreground">Descripción:</strong> {expense.description}</p>
+                                <p><strong className="text-muted-foreground">Categoría:</strong> <Badge variant="outline">{expense.category}</Badge></p>
+                                <p><strong className="text-muted-foreground">Monto (Bs.):</strong> {formatCurrency(expense.amountBolivares, 'VES')}</p>
+                                <p><strong className="text-muted-foreground">Tasa BCV:</strong> {formatCurrency(expense.bcvRate, 'VES')}</p>
+                                <p><strong className="text-muted-foreground">Monto (€):</strong> {formatCurrency(expense.amountEuros, 'EUR')}</p>
+
+                                {expense.documents && expense.documents.length > 0 && (
+                                    <div className="pt-4 border-t">
+                                        <strong className="text-muted-foreground block mb-2">Documentos Adjuntos:</strong>
+                                        <div className="grid grid-cols-2 gap-4">
+                                          {expense.documents.map((docUrl, index) => (
+                                              <div key={index} className="relative aspect-square">
+                                                <DocumentPreviewDialog src={docUrl} />
+                                              </div>
+                                          ))}
+                                        </div>
+                                    </div>
+                                )}
+                              </div>
+                            </ScrollArea>
+                          </DialogContent>
+                        </Dialog>
+
+                        <Button variant="ghost" size="icon" onClick={() => setEditingExpense(expense)}>
+                            <Pencil className="h-4 w-4" />
+                        </Button>
+
+                        <AlertDialog>
+                            <AlertDialogTrigger asChild>
+                                <Button variant="ghost" size="icon">
+                                    <Trash2 className="h-4 w-4 text-destructive" />
+                                </Button>
+                            </AlertDialogTrigger>
+                            <AlertDialogContent>
+                                <AlertDialogHeader>
+                                <AlertDialogTitle>¿Está seguro?</AlertDialogTitle>
+                                <AlertDialogDescription>
+                                    Se eliminará permanentemente este registro de la base de datos central.
+                                </AlertDialogDescription>
+                                </AlertDialogHeader>
+                                <AlertDialogFooter>
+                                <AlertDialogCancel>Cancelar</AlertDialogCancel>
+                                <AlertDialogAction 
+                                    onClick={() => handleDelete(expense.id)} 
+                                    className="bg-destructive hover:bg-destructive/90 text-white"
+                                >
+                                    Eliminar
+                                </AlertDialogAction>
+                                </AlertDialogFooter>
+                            </AlertDialogContent>
+                        </AlertDialog>
+                    </div>
                   </TableCell>
                 </TableRow>
               ))
             ) : (
               <TableRow>
-                <TableCell colSpan={5} className="h-24 text-center">
-                  No se encontraron gastos.
+                <TableCell colSpan={5} className="h-24 text-center text-muted-foreground">
+                  No se encontraron gastos registrados.
                 </TableCell>
               </TableRow>
             )}
@@ -253,11 +266,11 @@ export default function OperatingExpensesTable({ initialExpenses, isLoading }: O
 
        {editingExpense && (
         <Dialog open={!!editingExpense} onOpenChange={(open) => !open && setEditingExpense(null)}>
-          <DialogContent className="max-w-xl">
+          <DialogContent className="max-w-2xl max-h-[90vh] overflow-hidden flex flex-col">
             <DialogHeader>
               <DialogTitle>Editar Gasto de Operación</DialogTitle>
             </DialogHeader>
-             <ScrollArea className="max-h-[70vh] p-4">
+             <ScrollArea className="flex-grow p-4">
               <OperatingExpenseForm isEditMode initialData={editingExpense} onSuccess={handleEditSuccess} />
             </ScrollArea>
           </DialogContent>

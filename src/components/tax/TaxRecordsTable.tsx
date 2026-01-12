@@ -27,7 +27,8 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog"
-import Image from 'next/image';
+// Cambiamos el nombre de la importación para evitar el error 'new Image()'
+import NextImage from 'next/image'; 
 import { Badge } from '../ui/badge';
 import { ScrollArea } from '../ui/scroll-area';
 import TaxForm from './TaxForm';
@@ -36,14 +37,14 @@ import { jsPDF } from "jspdf";
 import 'jspdf-autotable';
 import { useAuth } from '@/firebase/provider';
 import { initializeFirebase } from '@/firebase';
-import { doc, deleteDoc } from 'firebase/firestore';
+import { doc } from 'firebase/firestore';
 import { useDoc } from '@/firebase/firestore/use-doc';
 import { deleteDocumentNonBlocking } from '@/firebase/non-blocking-updates';
 
-
+// Cambiamos 'initialRecords' por 'records' para que coincida con la página
 type TaxRecordsTableProps = {
-  initialRecords: TaxRecord[];
-  isLoading: boolean;
+  records: TaxRecord[];
+  isLoading?: boolean;
 };
 
 declare module 'jspdf' {
@@ -68,7 +69,8 @@ function DocumentPreviewDialog({ src }: { src: string }) {
         <Dialog open={open} onOpenChange={setOpen}>
             <DialogTrigger asChild>
                 <button className="relative w-full h-full">
-                    <Image src={src} alt="Comprobante" width={200} height={200} className="object-contain rounded-md border w-full h-full" />
+                    {/* Usamos NextImage aquí */}
+                    <NextImage src={src} alt="Comprobante" width={200} height={200} className="object-contain rounded-md border w-full h-full" />
                 </button>
             </DialogTrigger>
             <DialogContent className="max-w-5xl h-5/6 flex flex-col">
@@ -76,7 +78,7 @@ function DocumentPreviewDialog({ src }: { src: string }) {
                     <DialogTitle>Vista Previa del Comprobante</DialogTitle>
                 </DialogHeader>
                 <div className="flex-grow relative my-4">
-                    <Image src={src} alt="Vista previa completa" fill style={{ objectFit: 'contain' }} />
+                    <NextImage src={src} alt="Vista previa completa" fill style={{ objectFit: 'contain' }} />
                 </div>
                  <Button onClick={handleDownload} className="self-end">
                     <Download className="mr-2 h-4 w-4" />
@@ -87,7 +89,7 @@ function DocumentPreviewDialog({ src }: { src: string }) {
     );
 }
 
-export default function TaxRecordsTable({ initialRecords, isLoading }: TaxRecordsTableProps) {
+export default function TaxRecordsTable({ records = [], isLoading = false }: TaxRecordsTableProps) {
   const [dateFilter, setDateFilter] = useState('');
   const [descriptionFilter, setDescriptionFilter] = useState('');
   const [editingRecord, setEditingRecord] = useState<TaxRecord | null>(null);
@@ -105,7 +107,7 @@ export default function TaxRecordsTable({ initialRecords, isLoading }: TaxRecord
   const logoUrl = settings?.logoUrl;
 
   const filteredRecords = useMemo(() => {
-    return (initialRecords || []).filter((record) => {
+    return (records || []).filter((record) => {
       const paymentDate = record.paymentDate || '';
       const description = record.description?.toLowerCase() || '';
 
@@ -116,28 +118,19 @@ export default function TaxRecordsTable({ initialRecords, isLoading }: TaxRecord
       
       return dateMatch && descriptionMatch;
     });
-  }, [initialRecords, dateFilter, descriptionFilter]);
+  }, [records, dateFilter, descriptionFilter]);
   
   const handleDelete = async (id: string) => {
     if (!user) return;
-    
     const recordRef = doc(firestore, `users/${user.uid}/taxRecords`, id);
 
     try {
         deleteDocumentNonBlocking(recordRef);
-        toast({
-            title: 'Éxito',
-            description: 'Registro eliminado con éxito.',
-        });
+        toast({ title: 'Éxito', description: 'Registro eliminado.' });
     } catch (error) {
-         toast({
-            variant: 'destructive',
-            title: 'Error',
-            description: 'No se pudo eliminar el registro.',
-        });
+         toast({ variant: 'destructive', title: 'Error', description: 'No se pudo eliminar.' });
     }
   };
-
 
   const clearFilters = () => {
     setDateFilter('');
@@ -165,9 +158,9 @@ export default function TaxRecordsTable({ initialRecords, isLoading }: TaxRecord
     
     if (logoUrl) {
       try {
-        const img = new Image();
+        // CORRECCIÓN: Usamos el objeto global 'Image' para evitar conflicto con Next.js
+        const img = new (window.Image)();
         img.crossOrigin = "Anonymous";
-        img.src = logoUrl;
         doc.addImage(logoUrl, 'PNG', 14, 12, 20, 20);
       } catch (e) {
         console.error("Error loading logo for PDF", e);
@@ -181,7 +174,6 @@ export default function TaxRecordsTable({ initialRecords, isLoading }: TaxRecord
     doc.text(title, logoUrl ? 40 : 14, 28);
     doc.text(`Emitido: ${emissionDate}`, doc.internal.pageSize.getWidth() - 14, 28, { align: 'right' });
   };
-
 
   const exportToPDF = (record: TaxRecord) => {
     const doc = new jsPDF();
@@ -208,12 +200,11 @@ export default function TaxRecordsTable({ initialRecords, isLoading }: TaxRecord
     doc.save(`pago_impuesto_${record.receiptNumber}.pdf`);
   };
 
-
   return (
     <div className="space-y-4">
       <div className="flex flex-col md:flex-row gap-4">
         <Input
-          placeholder="Filtrar por fecha (YYYY-MM-DD)..."
+          placeholder="Filtrar por fecha..."
           value={dateFilter}
           onChange={(e) => setDateFilter(e.target.value)}
           className="max-w-sm"
@@ -224,11 +215,12 @@ export default function TaxRecordsTable({ initialRecords, isLoading }: TaxRecord
           onChange={(e) => setDescriptionFilter(e.target.value)}
           className="max-w-sm"
         />
-        <Button variant="ghost" onClick={clearFilters} className="text-muted-foreground">
+        <Button variant="ghost" onClick={clearFilters}>
           <FilterX className="mr-2 h-4 w-4" />
           Limpiar
         </Button>
       </div>
+
       <div className="rounded-md border">
         <Table>
           <TableHeader>
@@ -250,9 +242,7 @@ export default function TaxRecordsTable({ initialRecords, isLoading }: TaxRecord
             ) : filteredRecords.length > 0 ? (
               filteredRecords.map((record) => (
                 <TableRow key={record.id}>
-                  <TableCell className="font-medium whitespace-nowrap">
-                    {formatDate(record.paymentDate)}
-                  </TableCell>
+                  <TableCell className="font-medium">{formatDate(record.paymentDate)}</TableCell>
                   <TableCell>{record.description}</TableCell>
                   <TableCell>
                     <div className="flex flex-wrap gap-1">
@@ -261,96 +251,60 @@ export default function TaxRecordsTable({ initialRecords, isLoading }: TaxRecord
                       ))}
                     </div>
                   </TableCell>
-                  <TableCell className="text-right whitespace-nowrap">{formatCurrency(record.amountEuros)}</TableCell>
+                  <TableCell className="text-right">{formatCurrency(record.amountEuros)}</TableCell>
                   <TableCell className="text-center">
-                      <Dialog>
-                        <DialogTrigger asChild>
-                          <Button variant="ghost" size="icon" aria-label="Ver detalles">
-                            <Eye className="h-4 w-4" />
-                          </Button>
-                        </DialogTrigger>
-                        <DialogContent className="max-w-3xl">
-                          <DialogHeader>
-                            <DialogTitle>Detalles del Pago</DialogTitle>
-                          </DialogHeader>
-                          <ScrollArea className="max-h-[70vh] p-4">
-                           <div className="space-y-4">
-                            <p><strong className="font-medium">Fecha:</strong> {formatDate(record.paymentDate)}</p>
-                            <p><strong className="font-medium">Descripción:</strong> {record.description}</p>
-                             <p><strong className="font-medium">Categoría:</strong> <Badge variant="outline">{record.category}</Badge></p>
-                            <p><strong className="font-medium">Nro. Recibo:</strong> {record.receiptNumber}</p>
-                            <p><strong className="font-medium">Monto (Bs.):</strong> {formatCurrency(record.amountBolivares)}</p>
-                            <p><strong className="font-medium">Tasa BCV (€):</strong> {formatCurrency(record.bcvRate)}</p>
-                            <p><strong className="font-medium">Monto (€):</strong> {formatCurrency(record.amountEuros)}</p>
-                            <div>
-                                <strong className="font-medium">Meses liquidados:</strong>
-                                <div className="flex flex-wrap gap-2 mt-2">
-                                {record.settledMonths?.map(m => <Badge key={m} variant="outline">{m}</Badge>)}
-                                </div>
-                            </div>
-                            {record.documents && record.documents.length > 0 && (
-                              <div>
-                                <strong className="font-medium">Comprobantes:</strong>
-                                <div className="mt-2 grid grid-cols-2 md:grid-cols-3 gap-4">
-                                  {record.documents.map((doc, index) => (
-                                      <div key={index} className="relative aspect-square">
-                                          <DocumentPreviewDialog src={doc} />
-                                      </div>
-                                  ))}
-                                </div>
-                              </div>
-                            )}
-                          </div>
-                          </ScrollArea>
-                        </DialogContent>
-                      </Dialog>
-
-                      <Button variant="ghost" size="icon" aria-label="Editar registro" onClick={() => setEditingRecord(record)}>
-                        <Pencil className="h-4 w-4" />
-                      </Button>
-                      <Button variant="ghost" size="icon" aria-label="Exportar a PDF" onClick={() => exportToPDF(record)}>
-                        <FileDown className="h-4 w-4" />
-                      </Button>
-                       <AlertDialog>
+                    <div className="flex justify-center gap-2">
+                        <Dialog>
+                            <DialogTrigger asChild>
+                                <Button variant="ghost" size="icon"><Eye className="h-4 w-4" /></Button>
+                            </DialogTrigger>
+                            <DialogContent className="max-w-3xl">
+                                <DialogHeader><DialogTitle>Detalles</DialogTitle></DialogHeader>
+                                <ScrollArea className="max-h-[70vh] p-4">
+                                    <div className="space-y-4">
+                                        <p><strong>Recibo:</strong> {record.receiptNumber}</p>
+                                        <p><strong>Bolívares:</strong> {formatCurrency(record.amountBolivares)}</p>
+                                        {record.documents && record.documents.length > 0 && (
+                                            <div className="mt-4 grid grid-cols-2 gap-4">
+                                                {record.documents.map((url, i) => <DocumentPreviewDialog key={i} src={url} />)}
+                                            </div>
+                                        )}
+                                    </div>
+                                </ScrollArea>
+                            </DialogContent>
+                        </Dialog>
+                        <Button variant="ghost" size="icon" onClick={() => setEditingRecord(record)}><Pencil className="h-4 w-4" /></Button>
+                        <Button variant="ghost" size="icon" onClick={() => exportToPDF(record)}><FileDown className="h-4 w-4" /></Button>
+                        <AlertDialog>
                             <AlertDialogTrigger asChild>
-                                <Button variant="ghost" size="icon" aria-label="Eliminar registro">
-                                    <Trash2 className="h-4 w-4 text-destructive" />
-                                </Button>
+                                <Button variant="ghost" size="icon"><Trash2 className="h-4 w-4 text-destructive" /></Button>
                             </AlertDialogTrigger>
                             <AlertDialogContent>
-                                <AlertDialogHeader>
-                                <AlertDialogTitle>¿Estás absolutamente seguro?</AlertDialogTitle>
-                                <AlertDialogDescription>
-                                    Esta acción no se puede deshacer. Esto eliminará permanentemente el registro de impuesto.
-                                </AlertDialogDescription>
-                                </AlertDialogHeader>
+                                <AlertDialogHeader><AlertDialogTitle>¿Eliminar?</AlertDialogTitle></AlertDialogHeader>
                                 <AlertDialogFooter>
-                                <AlertDialogCancel>Cancelar</AlertDialogCancel>
-                                <AlertDialogAction onClick={() => handleDelete(record.id)} className="bg-destructive hover:bg-destructive/90">Eliminar</AlertDialogAction>
+                                    <AlertDialogCancel>No</AlertDialogCancel>
+                                    <AlertDialogAction onClick={() => handleDelete(record.id)}>Sí, eliminar</AlertDialogAction>
                                 </AlertDialogFooter>
                             </AlertDialogContent>
                         </AlertDialog>
+                    </div>
                   </TableCell>
                 </TableRow>
               ))
             ) : (
               <TableRow>
-                <TableCell colSpan={5} className="h-24 text-center">
-                  No se encontraron registros.
-                </TableCell>
+                <TableCell colSpan={5} className="h-24 text-center">No hay registros.</TableCell>
               </TableRow>
             )}
           </TableBody>
         </Table>
       </div>
 
-       {editingRecord && (
+      {editingRecord && (
         <Dialog open={!!editingRecord} onOpenChange={(open) => !open && setEditingRecord(null)}>
           <DialogContent className="max-w-3xl">
-            <DialogHeader>
-              <DialogTitle>Editar Pago de Impuesto</DialogTitle>
-            </DialogHeader>
-             <ScrollArea className="max-h-[70vh] p-4">
+            <DialogHeader><DialogTitle>Editar Pago</DialogTitle></DialogHeader>
+            <ScrollArea className="max-h-[70vh] p-4">
               <TaxForm isEditMode initialData={editingRecord} onSuccess={handleEditSuccess} />
             </ScrollArea>
           </DialogContent>

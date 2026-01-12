@@ -1,12 +1,16 @@
-
 'use client';
 
-import { useEffect, useMemo, useRef, useState, useTransition } from 'react';
+import { useRef, useState, useTransition } from 'react';
 import { useForm, useFieldArray } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import Image from 'next/image';
 
-import { economicLicenseSchema, economicLicenseWithIdSchema, type EconomicLicense, type EconomicLicenseFormValues } from '@/types';
+import { 
+  economicLicenseSchema, 
+  economicLicenseWithIdSchema, 
+  type EconomicLicense, 
+  type EconomicLicenseFormValues 
+} from '@/types';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -16,7 +20,7 @@ import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '
 import { Separator } from '../ui/separator';
 import { processImage } from '@/lib/image-utils';
 import { useAuth } from '@/firebase/provider';
-import { addDoc, collection, doc, serverTimestamp, updateDoc } from 'firebase/firestore';
+import { collection, doc, serverTimestamp } from 'firebase/firestore';
 import { initializeFirebase } from '@/firebase';
 import { addDocumentNonBlocking, updateDocumentNonBlocking } from '@/firebase/non-blocking-updates';
 
@@ -35,7 +39,6 @@ type EconomicLicenseFormProps = {
   onSuccess?: () => void;
 };
 
-
 export default function EconomicLicenseForm({ isEditMode = false, initialData, onSuccess }: EconomicLicenseFormProps) {
   const [isPending, startTransition] = useTransition();
   const { toast } = useToast();
@@ -47,23 +50,6 @@ export default function EconomicLicenseForm({ isEditMode = false, initialData, o
     resolver: zodResolver(isEditMode ? economicLicenseWithIdSchema : economicLicenseSchema),
     defaultValues: isEditMode && initialData ? {
       ...initialData,
-      taxpayerId: initialData.taxpayerId || '',
-      taxpayerName: initialData.taxpayerName || '',
-      capital: initialData.capital || 0,
-      fiscalAddress: initialData.fiscalAddress || '',
-      cadastreNumber: initialData.cadastreNumber || '',
-      legalRepresentative: initialData.legalRepresentative || '',
-      legalRepresentativeId: initialData.legalRepresentativeId || '',
-      propertyOwnerId: initialData.propertyOwnerId || '',
-      propertyOwnerName: initialData.propertyOwnerName || '',
-      propertyOwnerCiRif: initialData.propertyOwnerCiRif || '',
-      propertyId: initialData.propertyId || '',
-      propertyCadastreNumber: initialData.propertyCadastreNumber || '',
-      licenseNumber: initialData.licenseNumber || '',
-      taxpayerLicenseId: initialData.taxpayerLicenseId || '',
-      issueDate: initialData.issueDate || new Date().toISOString().split('T')[0],
-      expirationDate: initialData.expirationDate || new Date(new Date().setFullYear(new Date().getFullYear() + 1)).toISOString().split('T')[0],
-      authorizedActivities: initialData.authorizedActivities || [{ code: '', description: '', aliquot: 0, taxableMinimum: 0 }],
       documents: initialData.documents || [],
     } : {
       taxpayerId: '',
@@ -108,7 +94,7 @@ export default function EconomicLicenseForm({ isEditMode = false, initialData, o
       toast({
         variant: 'destructive',
         title: 'Error de imagen',
-        description: 'No se pudo procesar uno o más archivos. Por favor, intenta de nuevo.',
+        description: 'No se pudo procesar uno o más archivos.',
       });
     }
   };
@@ -129,23 +115,25 @@ export default function EconomicLicenseForm({ isEditMode = false, initialData, o
     startTransition(() => {
         try {
             if (isEditMode && initialData?.id) {
-                const licenseRef = doc(firestore, `users/${user.uid}/economicLicenses`, initialData.id);
+                // RUTA CENTRALIZADA
+                const licenseRef = doc(firestore, `users/default-user/economicLicenses`, initialData.id);
                 updateDocumentNonBlocking(licenseRef, values);
-                toast({title: 'Éxito', description: 'Licencia económica actualizada con éxito.'});
+                toast({title: 'Éxito', description: 'Licencia actualizada en base central.'});
             } else {
-                const licensesCollection = collection(firestore, `users/${user.uid}/economicLicenses`);
+                // RUTA CENTRALIZADA
+                const licensesCollection = collection(firestore, `users/default-user/economicLicenses`);
                 addDocumentNonBlocking(licensesCollection, {
                     ...values,
                     createdAt: serverTimestamp(),
-                    userId: user.uid,
+                    authorId: user.uid,
                 });
-                toast({title: 'Éxito', description: 'Licencia económica agregada con éxito.'});
+                toast({title: 'Éxito', description: 'Licencia agregada a base central.'});
                 reset();
                 setPreviews([]);
             }
             if(onSuccess) onSuccess();
         } catch (error) {
-            toast({variant: 'destructive', title: 'Error', description: 'Error al guardar la licencia.'});
+            toast({variant: 'destructive', title: 'Error', description: 'Error al procesar la licencia.'});
         }
     });
   };
@@ -154,18 +142,18 @@ export default function EconomicLicenseForm({ isEditMode = false, initialData, o
     <Form {...form}>
       <form ref={formRef} onSubmit={handleSubmit(onSubmit)} className="space-y-8">
         
-        {/* Contribuyente */}
+        {/* Sección: Contribuyente */}
         <div className='space-y-4'>
-            <h3 className='text-lg font-medium text-primary'>Información del Contribuyente</h3>
+            <h3 className='text-lg font-semibold text-primary border-b pb-2'>Información del Contribuyente</h3>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <FormField control={control} name="taxpayerId" render={({ field }) => (
-                    <FormItem><FormLabel>C.I. / RIF</FormLabel><FormControl><Input {...field} /></FormControl><FormMessage /></FormItem>
+                    <FormItem><FormLabel>C.I. / RIF Contribuyente</FormLabel><FormControl><Input {...field} /></FormControl><FormMessage /></FormItem>
                 )} />
                 <FormField control={control} name="taxpayerName" render={({ field }) => (
-                    <FormItem><FormLabel>Contribuyente</FormLabel><FormControl><Input {...field} /></FormControl><FormMessage /></FormItem>
+                    <FormItem><FormLabel>Nombre o Razón Social</FormLabel><FormControl><Input {...field} /></FormControl><FormMessage /></FormItem>
                 )} />
                 <FormField control={control} name="capital" render={({ field }) => (
-                    <FormItem><FormLabel>Capital</FormLabel><FormControl><Input type="number" {...field} onChange={(e) => field.onChange(parseFloat(e.target.value) || 0)}/></FormControl><FormMessage /></FormItem>
+                    <FormItem><FormLabel>Capital Social</FormLabel><FormControl><Input type="number" step="0.01" {...field} onChange={(e) => field.onChange(parseFloat(e.target.value) || 0)}/></FormControl><FormMessage /></FormItem>
                 )} />
                 <FormField control={control} name="fiscalAddress" render={({ field }) => (
                     <FormItem><FormLabel>Dirección Fiscal</FormLabel><FormControl><Input {...field} /></FormControl><FormMessage /></FormItem>
@@ -177,28 +165,23 @@ export default function EconomicLicenseForm({ isEditMode = false, initialData, o
                     <FormItem><FormLabel>Representante Legal</FormLabel><FormControl><Input {...field} /></FormControl><FormMessage /></FormItem>
                 )} />
                  <FormField control={control} name="legalRepresentativeId" render={({ field }) => (
-                    <FormItem><FormLabel>C.I. Rep. Legal</FormLabel><FormControl><Input {...field} /></FormControl><FormMessage /></FormItem>
+                    <FormItem><FormLabel>C.I. Representante Legal</FormLabel><FormControl><Input {...field} /></FormControl><FormMessage /></FormItem>
                 )} />
             </div>
         </div>
 
-        <Separator />
-
-        {/* Propietario del Inmueble */}
-        <div className='space-y-4'>
-            <h3 className='text-lg font-medium text-primary'>Información Propietario del Inmueble</h3>
+        {/* Sección: Inmueble */}
+        <div className='space-y-4 bg-slate-50 p-4 rounded-lg border border-slate-200'>
+            <h3 className='text-lg font-semibold text-primary border-b border-slate-200 pb-2'>Información del Inmueble</h3>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <FormField control={control} name="propertyOwnerId" render={({ field }) => (
-                    <FormItem><FormLabel>ID Propietario</FormLabel><FormControl><Input {...field} /></FormControl><FormMessage /></FormItem>
-                )} />
                 <FormField control={control} name="propertyOwnerName" render={({ field }) => (
-                    <FormItem><FormLabel>Propietario</FormLabel><FormControl><Input {...field} /></FormControl><FormMessage /></FormItem>
+                    <FormItem><FormLabel>Propietario del Inmueble</FormLabel><FormControl><Input {...field} /></FormControl><FormMessage /></FormItem>
                 )} />
                 <FormField control={control} name="propertyOwnerCiRif" render={({ field }) => (
-                    <FormItem><FormLabel>C.I. / RIF</FormLabel><FormControl><Input {...field} /></FormControl><FormMessage /></FormItem>
+                    <FormItem><FormLabel>C.I. / RIF Propietario</FormLabel><FormControl><Input {...field} /></FormControl><FormMessage /></FormItem>
                 )} />
                 <FormField control={control} name="propertyId" render={({ field }) => (
-                    <FormItem><FormLabel>ID Inmueble</FormLabel><FormControl><Input {...field} /></FormControl><FormMessage /></FormItem>
+                    <FormItem><FormLabel>Código/ID Inmueble</FormLabel><FormControl><Input {...field} /></FormControl><FormMessage /></FormItem>
                 )} />
                  <FormField control={control} name="propertyCadastreNumber" render={({ field }) => (
                     <FormItem><FormLabel>Nro. Catastro Inmueble</FormLabel><FormControl><Input {...field} /></FormControl><FormMessage /></FormItem>
@@ -206,17 +189,15 @@ export default function EconomicLicenseForm({ isEditMode = false, initialData, o
             </div>
         </div>
         
-        <Separator />
-
-        {/* Identificación de la Licencia */}
+        {/* Sección: Vigencia */}
         <div className='space-y-4'>
-            <h3 className='text-lg font-medium text-primary'>Identificación y Vigencia de la Licencia</h3>
+            <h3 className='text-lg font-semibold text-primary border-b pb-2'>Identificación de la Licencia</h3>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <FormField control={control} name="licenseNumber" render={({ field }) => (
-                    <FormItem><FormLabel>Nro. Licencia</FormLabel><FormControl><Input {...field} /></FormControl><FormMessage /></FormItem>
+                    <FormItem><FormLabel>Número de Licencia</FormLabel><FormControl><Input {...field} className="font-bold text-accent" /></FormControl><FormMessage /></FormItem>
                 )} />
                  <FormField control={control} name="taxpayerLicenseId" render={({ field }) => (
-                    <FormItem><FormLabel>ID Contribuyente</FormLabel><FormControl><Input {...field} /></FormControl><FormMessage /></FormItem>
+                    <FormItem><FormLabel>ID/Expediente Interno</FormLabel><FormControl><Input {...field} /></FormControl><FormMessage /></FormItem>
                 )} />
                 <FormField control={control} name="issueDate" render={({ field }) => (
                     <FormItem><FormLabel>Fecha de Emisión</FormLabel><FormControl><Input type="date" {...field} /></FormControl><FormMessage /></FormItem>
@@ -227,14 +208,17 @@ export default function EconomicLicenseForm({ isEditMode = false, initialData, o
             </div>
         </div>
 
-        <Separator />
-
-        {/* Rubros Autorizados */}
+        {/* Sección: Rubros */}
         <div className='space-y-4'>
-          <h3 className='text-lg font-medium text-primary'>Rubros Autorizados</h3>
+          <div className="flex items-center justify-between border-b pb-2">
+            <h3 className='text-lg font-semibold text-primary'>Rubros Autorizados</h3>
+            <Button type="button" variant="outline" size="sm" onClick={() => append({ code: '', description: '', aliquot: 0, taxableMinimum: 0 })}>
+                <PlusCircle className="mr-2 h-4 w-4" /> Agregar Rubro
+            </Button>
+          </div>
           {fields.map((item, index) => (
-            <div key={item.id} className="p-4 border rounded-md space-y-4 relative">
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div key={item.id} className="p-4 border rounded-md bg-white shadow-sm space-y-4 relative">
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 pr-8">
                 <FormField control={control} name={`authorizedActivities.${index}.code`} render={({ field }) => (
                     <FormItem><FormLabel>Código</FormLabel><FormControl><Input {...field} /></FormControl><FormMessage /></FormItem>
                 )} />
@@ -245,67 +229,51 @@ export default function EconomicLicenseForm({ isEditMode = false, initialData, o
                     <FormItem><FormLabel>% Alícuota</FormLabel><FormControl><Input type="number" step="0.01" {...field} onChange={(e) => field.onChange(parseFloat(e.target.value) || 0)} /></FormControl><FormMessage /></FormItem>
                 )} />
                 <FormField control={control} name={`authorizedActivities.${index}.taxableMinimum`} render={({ field }) => (
-                    <FormItem><FormLabel>Mínimo Imputable Bs.</FormLabel><FormControl><Input type="number" step="0.01" {...field} onChange={(e) => field.onChange(parseFloat(e.target.value) || 0)}/></FormControl><FormMessage /></FormItem>
+                    <FormItem><FormLabel>Mín. Imputable (Bs)</FormLabel><FormControl><Input type="number" step="0.01" {...field} onChange={(e) => field.onChange(parseFloat(e.target.value) || 0)}/></FormControl><FormMessage /></FormItem>
                 )} />
               </div>
-              <Button type="button" variant="destructive" size="icon" className='absolute top-2 right-2' onClick={() => remove(index)}>
-                <X className="h-4 w-4" />
-              </Button>
+              {fields.length > 1 && (
+                <Button type="button" variant="ghost" size="icon" className='absolute top-2 right-2 text-destructive hover:bg-destructive/10' onClick={() => remove(index)}>
+                    <X className="h-4 w-4" />
+                </Button>
+              )}
             </div>
           ))}
-          <Button type="button" variant="outline" onClick={() => append({ code: '', description: '', aliquot: 0, taxableMinimum: 0 })}>
-            <PlusCircle className="mr-2 h-4 w-4" /> Agregar Rubro
-          </Button>
         </div>
 
-        <Separator />
-
-        {/* Documento */}
-        <div>
-          <Label htmlFor="document-input">Comprobante(s) (opcional)</Label>
-          <div className="mt-2 flex flex-col items-center justify-center rounded-lg border border-dashed border-border px-6 py-10">
-            <div className="text-center">
-                <UploadCloud className="mx-auto h-12 w-12 text-gray-400" aria-hidden="true" />
-              <div className="mt-4 flex text-sm leading-6 text-muted-foreground">
-                <Label htmlFor="document-input" className="relative cursor-pointer rounded-md font-semibold text-primary focus-within:outline-none focus-within:ring-2 focus-within:ring-ring focus-within:ring-offset-2 hover:text-primary/80">
-                  <span>Sube uno o más archivos</span>
-                  <Input id="document-input" name="document-input" type="file" className="sr-only" accept="image/jpeg,image/png" multiple onChange={handleFileChange} />
-                </Label>
-                <p className="pl-1">o arrástralos aquí</p>
-              </div>
-              <p className="text-xs leading-5 text-muted-foreground">Imágenes de hasta 10MB</p>
+        {/* Sección: Documentos */}
+        <div className="space-y-4">
+          <Label className="text-lg font-semibold text-primary">Comprobantes Digitales</Label>
+          <div className="flex flex-col items-center justify-center rounded-lg border-2 border-dashed border-slate-200 p-8 hover:bg-slate-50 transition-colors">
+            <UploadCloud className="h-10 w-10 text-muted-foreground mb-2" />
+            <div className="flex text-sm">
+              <Label htmlFor="document-input" className="relative cursor-pointer rounded-md font-semibold text-primary hover:underline">
+                <span>Sube la licencia escaneada</span>
+                <Input id="document-input" type="file" className="sr-only" accept="image/*" multiple onChange={handleFileChange} />
+              </Label>
+              <p className="pl-1 text-muted-foreground">o arrastra aquí</p>
             </div>
-             {previews.length > 0 && (
-              <div className="mt-4 grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
+            
+            {previews.length > 0 && (
+              <div className="mt-6 grid grid-cols-2 md:grid-cols-4 gap-4 w-full">
                 {previews.map((src, index) => (
-                  <div key={index} className="relative group">
-                    <Image src={src} alt={`Vista previa ${index + 1}`} width={100} height={100} className="w-full h-auto object-contain rounded-md" />
-                    <Button
+                  <div key={index} className="relative aspect-[3/4] border rounded-md overflow-hidden group">
+                    <Image src={src} alt="Escaneo de licencia" fill className="object-cover" />
+                    <button
                       type="button"
-                      variant="destructive"
-                      size="icon"
-                      className="absolute top-1 right-1 h-6 w-6 opacity-0 group-hover:opacity-100"
                       onClick={() => removePreview(index)}
+                      className="absolute top-1 right-1 p-1 bg-destructive text-white rounded-full opacity-0 group-hover:opacity-100 transition-opacity shadow-lg"
                     >
-                      <X className="h-4 w-4" />
-                    </Button>
+                      <X className="h-3 w-3" />
+                    </button>
                   </div>
                 ))}
               </div>
             )}
           </div>
-           <FormField
-            control={control}
-            name="documents"
-            render={({ field }) => (
-              <FormItem className='hidden'>
-                <FormControl>
-                  <Input type="hidden" {...field} />
-                </FormControl>
-                 <FormMessage />
-              </FormItem>
-            )}
-          />
+          <FormField control={control} name="documents" render={({ field }) => (
+              <FormItem className='hidden'><FormControl><Input type="hidden" {...field} /></FormControl></FormItem>
+          )} />
         </div>
 
         <SubmitButton isPending={isPending} isEditMode={isEditMode} />

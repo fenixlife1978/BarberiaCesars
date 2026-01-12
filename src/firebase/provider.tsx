@@ -1,13 +1,12 @@
 'use client';
-import { initializeFirebase } from '.';
+// IMPORTANTE: Asegúrate de que '.' apunte al archivo que inicializa el CLIENTE (firebase/index.ts)
+import { initializeFirebase } from '.'; 
 import React, { createContext, useContext, useEffect, useState } from 'react';
 import { onIdTokenChanged, User } from 'firebase/auth';
 import { doc, onSnapshot } from 'firebase/firestore';
 
-// undefined: initial loading state
-// null: user is not logged in
-// User: user is logged in
 const AuthContext = createContext<User | null | undefined>(undefined);
+const UserRoleContext = createContext<string | null>(null);
 
 export function FirebaseProvider({ children }: { children: React.ReactNode }) {
   const [user, setUser] = useState<User | null | undefined>(undefined);
@@ -16,32 +15,42 @@ export function FirebaseProvider({ children }: { children: React.ReactNode }) {
   useEffect(() => {
     const { auth, firestore } = initializeFirebase();
 
-    // Use onIdTokenChanged to get the latest user state with custom claims
-    const unsubscribeAuth = onIdTokenChanged(auth, async (user) => {
-      setUser(user);
-      if (user) {
-        // Force refresh the token to make sure we have the latest claims.
-        const idTokenResult = await user.getIdTokenResult(true);
-        const roleFromClaim = idTokenResult.claims.role as string || null;
-        setUserRole(roleFromClaim);
+    const unsubscribeAuth = onIdTokenChanged(auth, async (currentUser) => {
+      // 1. Establecemos el usuario inmediatamente
+      setUser(currentUser);
 
-        // Optional: you can still listen to the document for other profile info if needed,
-        // but the primary role should come from the claim for security.
-        const userDocRef = doc(firestore, 'users', user.uid);
-        const unsubscribeDoc = onSnapshot(userDocRef, (docSnap) => {
-          if (docSnap.exists()) {
-             // You could set other profile data here
-          }
-        });
-        return () => unsubscribeDoc(); // Cleanup doc listener on user change
+      if (currentUser) {
+        try {
+          // 2. Obtenemos el rol de los Custom Claims
+          const idTokenResult = await currentUser.getIdTokenResult(true);
+          const roleFromClaim = idTokenResult.claims.role as string || null;
+          setUserRole(roleFromClaim);
+
+          // 3. Escuchamos el documento del usuario (Tu UID: OLgPD8W3QsOLqqFc447jTVhsFrm1)
+          const userDocRef = doc(firestore, 'users', currentUser.uid);
+          const unsubscribeDoc = onSnapshot(userDocRef, (docSnap) => {
+            if (docSnap.exists()) {
+               // Aquí podrías guardar datos adicionales si los necesitas
+               console.log("Datos de usuario cargados:", docSnap.data());
+            }
+          }, (error) => {
+            console.error("Error en el snapshot de Firestore:", error);
+          });
+
+          return () => unsubscribeDoc();
+        } catch (error) {
+          console.error("Error obteniendo token:", error);
+          setUserRole(null);
+        }
       } else {
         setUserRole(null);
       }
     });
 
-    return () => unsubscribeAuth(); // Cleanup auth listener
+    return () => unsubscribeAuth();
   }, []);
 
+  // Mientras el estado es undefined, la app está cargando el estado inicial
   return (
     <AuthContext.Provider value={user}>
       <UserRoleContext.Provider value={userRole}>
@@ -51,12 +60,5 @@ export function FirebaseProvider({ children }: { children: React.ReactNode }) {
   );
 }
 
-export const useAuth = () => {
-  return useContext(AuthContext);
-};
-
-const UserRoleContext = createContext<string | null>(null);
-
-export const useUserRole = () => {
-    return useContext(UserRoleContext);
-}
+export const useAuth = () => useContext(AuthContext);
+export const useUserRole = () => useContext(UserRoleContext);

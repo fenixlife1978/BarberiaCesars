@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useMemo, useRef, useState, useTransition } from 'react';
+import { useEffect, useRef, useState, useTransition } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import Image from 'next/image';
@@ -21,9 +21,7 @@ import { UploadCloud, Loader2, ChevronLeft, ChevronRight, X } from 'lucide-react
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '../ui/form';
 import { processImage } from '@/lib/image-utils';
 import { Checkbox } from '../ui/checkbox';
-import { useAuth } from '@/firebase/provider';
 import { initializeFirebase } from '@/firebase';
-import { addDocumentNonBlocking, updateDocumentNonBlocking } from '@/firebase/non-blocking-updates';
 
 function SubmitButton({ isPending, isEditMode }: { isPending: boolean, isEditMode: boolean }) {
   return (
@@ -45,7 +43,6 @@ export default function TaxForm({ isEditMode = false, initialData, onSuccess }: 
   const { toast } = useToast();
   const formRef = useRef<HTMLFormElement>(null);
   const [previews, setPreviews] = useState<string[]>(initialData?.documents || []);
-  const user = useAuth();
 
   const currentYear = new Date().getFullYear();
   const [selectedYear, setSelectedYear] = useState(
@@ -84,22 +81,19 @@ export default function TaxForm({ isEditMode = false, initialData, onSuccess }: 
     }
   }, [amountBolivares, bcvRate, setValue, isEditMode]);
 
-
   const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = e.target.files;
     if (!files) return;
-
     try {
       const newPreviews = await Promise.all(Array.from(files).map(processImage));
       const updatedPreviews = [...previews, ...newPreviews];
       setPreviews(updatedPreviews);
       setValue('documents', updatedPreviews, { shouldValidate: true });
     } catch (error) {
-      console.error(error);
       toast({
         variant: 'destructive',
         title: 'Error de imagen',
-        description: 'No se pudo procesar uno o más archivos. Por favor, intenta de nuevo.',
+        description: 'No se pudo procesar la imagen.',
       });
     }
   };
@@ -110,53 +104,47 @@ export default function TaxForm({ isEditMode = false, initialData, onSuccess }: 
     setValue('documents', updatedPreviews, { shouldValidate: true });
   };
   
-  const onSubmit = (values: TaxRecordFormValues) => {
-    if (!user) {
-        toast({variant: 'destructive', title: 'Error', description: 'Debes iniciar sesión.'});
-        return;
-    }
+  const onSubmit = async (values: TaxRecordFormValues) => {
     const { firestore } = initializeFirebase();
+    
+    // RUTA CORREGIDA: default-user (Sin S)
+    const CENTRAL_PATH = `users/default-user/taxRecords`;
 
     const dataToSave = {
       ...values,
-      category: 'Impuestos', // Always ensure category is set
+      category: 'Impuestos',
+      updatedAt: serverTimestamp(),
     };
 
-    startTransition(() => {
-        try {
-            if (isEditMode && initialData?.id) {
-                 const recordRef = doc(firestore, `users/${user.uid}/taxRecords`, initialData.id);
-                 updateDocumentNonBlocking(recordRef, dataToSave);
-                 toast({title: 'Éxito', description: 'Registro actualizado con éxito.'});
-            } else {
-                const recordsCollection = collection(firestore, `users/${user.uid}/taxRecords`);
-                addDocumentNonBlocking(recordsCollection, {
-                    ...dataToSave,
-                    createdAt: serverTimestamp(),
-                    userId: user.uid,
-                });
-                toast({title: 'Éxito', description: 'Registro agregado con éxito.'});
-                reset({
-                  paymentDate: new Date().toISOString().split('T')[0],
-                  description: '',
-                  receiptNumber: '',
-                  amountBolivares: 0,
-                  bcvRate: 0,
-                  amountEuros: 0,
-                  settledMonths: [],
-                  documents: [],
-                  category: 'Impuestos',
-                });
-                setPreviews([]);
-                setSelectedYear(currentYear);
-            }
-            if (onSuccess) onSuccess();
-        } catch (error) {
-             toast({variant: 'destructive', title: 'Error', description: 'Ocurrió un error al guardar el registro.'});
+    startTransition(async () => {
+      try {
+        if (isEditMode && initialData?.id) {
+          const recordRef = doc(firestore, CENTRAL_PATH, initialData.id);
+          await updateDoc(recordRef, dataToSave);
+          toast({ title: 'Éxito', description: 'Registro actualizado en base central.' });
+        } else {
+          const recordsCollection = collection(firestore, CENTRAL_PATH);
+          await addDoc(recordsCollection, {
+            ...dataToSave,
+            createdAt: serverTimestamp(),
+          });
+          toast({ title: 'Éxito', description: 'Registro guardado exitosamente.' });
+          
+          reset();
+          setPreviews([]);
         }
+
+        if (onSuccess) onSuccess();
+      } catch (error: any) {
+        console.error("Error en Firestore:", error);
+        toast({
+          variant: 'destructive',
+          title: 'Error de Permisos',
+          description: 'Asegúrate de que la regla en Firebase permita el acceso a: users/default-user',
+        });
+      }
     });
   };
-
 
   return (
     <Form {...form}>
@@ -175,7 +163,7 @@ export default function TaxForm({ isEditMode = false, initialData, onSuccess }: 
               </FormItem>
             )}
           />
-           <FormField
+          <FormField
             control={control}
             name="receiptNumber"
             render={({ field }) => (
@@ -189,19 +177,20 @@ export default function TaxForm({ isEditMode = false, initialData, onSuccess }: 
             )}
           />
         </div>
-         <FormField
-            control={control}
-            name="description"
-            render={({ field }) => (
-              <FormItem>
-                <FormLabel>Descripción</FormLabel>
-                <FormControl>
-                  <Input placeholder="Ej: IVA Febrero" {...field} />
-                </FormControl>
-                <FormMessage />
-              </FormItem>
-            )}
-          />
+
+        <FormField
+          control={control}
+          name="description"
+          render={({ field }) => (
+            <FormItem>
+              <FormLabel>Descripción / Contribuyente</FormLabel>
+              <FormControl>
+                <Input placeholder="Ej: IVA Febrero - Abasto El Sol" {...field} />
+              </FormControl>
+              <FormMessage />
+            </FormItem>
+          )}
+        />
         
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           <FormField
@@ -222,7 +211,7 @@ export default function TaxForm({ isEditMode = false, initialData, onSuccess }: 
             name="bcvRate"
             render={({ field }) => (
               <FormItem>
-                <FormLabel>Tasa BCV de EUR del día</FormLabel>
+                <FormLabel>Tasa BCV (EUR)</FormLabel>
                 <FormControl>
                   <Input type="number" step="0.01" {...field} onChange={(e) => field.onChange(parseFloat(e.target.value) || 0)} />
                 </FormControl>
@@ -231,9 +220,10 @@ export default function TaxForm({ isEditMode = false, initialData, onSuccess }: 
             )}
           />
         </div>
-         <div>
-          <Label>Monto en Euros (calculado)</Label>
-          <Input type="number" {...register('amountEuros')} readOnly className="mt-2 bg-muted/50" />
+
+        <div>
+          <Label>Monto en Euros (Calculado automáticamente)</Label>
+          <Input type="number" {...register('amountEuros')} readOnly className="mt-2 bg-muted/50 font-bold text-primary" />
         </div>
 
         <FormField
@@ -242,43 +232,36 @@ export default function TaxForm({ isEditMode = false, initialData, onSuccess }: 
           render={({ field }) => (
             <FormItem>
               <div className="mb-4">
-                <FormLabel className="text-base">Meses Cancelados</FormLabel>
-                 <div className="flex items-center justify-center gap-4 mt-2">
-                    <Button type="button" variant="outline" size="icon" onClick={() => setSelectedYear(y => y - 1)}>
-                        <ChevronLeft className="h-4 w-4" />
-                    </Button>
-                    <span className="text-lg font-semibold tabular-nums">{selectedYear}</span>
-                    <Button type="button" variant="outline" size="icon" onClick={() => setSelectedYear(y => y + 1)}>
-                        <ChevronRight className="h-4 w-4" />
-                    </Button>
+                <FormLabel className="text-base font-bold text-primary">Meses a Cancelar</FormLabel>
+                <div className="flex items-center justify-center gap-4 mt-2">
+                  <Button type="button" variant="outline" size="icon" onClick={() => setSelectedYear(y => y - 1)}>
+                    <ChevronLeft className="h-4 w-4" />
+                  </Button>
+                  <span className="text-lg font-extrabold tabular-nums bg-primary text-primary-foreground px-4 py-1 rounded-md">{selectedYear}</span>
+                  <Button type="button" variant="outline" size="icon" onClick={() => setSelectedYear(y => y + 1)}>
+                    <ChevronRight className="h-4 w-4" />
+                  </Button>
                 </div>
               </div>
-              <div className="grid grid-cols-3 sm:grid-cols-4 gap-4">
+              <div className="grid grid-cols-3 sm:grid-cols-4 gap-2">
                 {months.map((month) => {
                   const monthYear = `${month}-${selectedYear}`;
                   return (
-                    <FormItem
-                      key={monthYear}
-                      className="flex flex-row items-start space-x-3 space-y-0"
-                    >
+                    <FormItem key={monthYear} className="flex flex-row items-center space-x-2 space-y-0 border p-2 rounded-md hover:bg-accent/10 transition-colors">
                       <FormControl>
                         <Checkbox
                           checked={field.value?.includes(monthYear)}
                           onCheckedChange={(checked) => {
                             const newValue = checked
                               ? [...(field.value || []), monthYear]
-                              : field.value?.filter(
-                                  (value) => value !== monthYear
-                                );
+                              : field.value?.filter((value) => value !== monthYear);
                             field.onChange(newValue);
                           }}
                         />
                       </FormControl>
-                      <FormLabel className="font-normal">
-                        {month}
-                      </FormLabel>
+                      <FormLabel className="text-[10px] font-bold cursor-pointer uppercase">{month}</FormLabel>
                     </FormItem>
-                  )
+                  );
                 })}
               </div>
               <FormMessage />
@@ -286,56 +269,36 @@ export default function TaxForm({ isEditMode = false, initialData, onSuccess }: 
           )}
         />
 
-       
-        <div>
-          <Label htmlFor="document-input">Comprobante(s)</Label>
-          <div className="mt-2 flex flex-col items-center justify-center rounded-lg border border-dashed border-border px-6 py-10">
-            <div className="text-center">
-              <UploadCloud className="mx-auto h-12 w-12 text-gray-400" aria-hidden="true" />
-              <div className="mt-4 flex text-sm leading-6 text-muted-foreground">
-                <Label
-                  htmlFor="document-input"
-                  className="relative cursor-pointer rounded-md font-semibold text-primary focus-within:outline-none focus-within:ring-2 focus-within:ring-ring focus-within:ring-offset-2 hover:text-primary/80"
-                >
-                  <span>Sube uno o más archivos</span>
-                  <Input id="document-input" name="document-input" type="file" className="sr-only" accept="image/jpeg,image/png" multiple onChange={handleFileChange} />
-                </Label>
-                <p className="pl-1">o arrástralos aquí</p>
-              </div>
-              <p className="text-xs leading-5 text-muted-foreground">Imágenes de hasta 10MB</p>
+        <div className="space-y-2">
+          <Label>Adjuntar Comprobantes</Label>
+          <div className="flex flex-col items-center justify-center rounded-lg border-2 border-dashed border-muted-foreground/25 px-6 py-8 bg-muted/20">
+            <UploadCloud className="h-8 w-8 text-muted-foreground mb-2" />
+            <div className="flex text-sm">
+              <Label htmlFor="document-input" className="relative cursor-pointer font-bold text-primary hover:underline">
+                <span>Subir captures</span>
+                <Input id="document-input" type="file" className="sr-only" accept="image/jpeg,image/png" multiple onChange={handleFileChange} />
+              </Label>
             </div>
-             {previews.length > 0 && (
-              <div className="mt-4 grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
+            
+            {previews.length > 0 && (
+              <div className="mt-4 grid grid-cols-3 gap-2 w-full">
                 {previews.map((src, index) => (
-                  <div key={index} className="relative group">
-                    <Image src={src} alt={`Vista previa ${index + 1}`} width={100} height={100} className="w-full h-auto object-contain rounded-md" />
-                    <Button
+                  <div key={index} className="relative aspect-square border rounded overflow-hidden">
+                    <Image src={src} alt="Preview" fill className="object-cover" />
+                    <button
                       type="button"
-                      variant="destructive"
-                      size="icon"
-                      className="absolute top-1 right-1 h-6 w-6 opacity-0 group-hover:opacity-100"
                       onClick={() => removePreview(index)}
+                      className="absolute top-0 right-0 bg-destructive text-white p-1"
                     >
-                      <X className="h-4 w-4" />
-                    </Button>
+                      <X className="h-3 w-3" />
+                    </button>
                   </div>
                 ))}
               </div>
             )}
           </div>
-          <FormField
-            control={control}
-            name="documents"
-            render={({ field }) => (
-              <FormItem className='hidden'>
-                <FormControl>
-                  <Input type="hidden" {...field} value={field.value?.join(',') || ''} />
-                </FormControl>
-                 <FormMessage />
-              </FormItem>
-            )}
-          />
         </div>
+
         <SubmitButton isPending={isPending} isEditMode={isEditMode} />
       </form>
     </Form>
