@@ -9,7 +9,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import BackButton from "@/components/BackButton";
 import { Skeleton } from '@/components/ui/skeleton';
 import { EconomicLicense } from '@/types';
-import { useAuth, useUserRole } from '@/firebase/provider';
+import { useAuth } from '@/firebase/provider';
 import { Button } from '@/components/ui/button';
 import { PlusCircle } from 'lucide-react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
@@ -19,21 +19,28 @@ import { ScrollArea } from '@/components/ui/scroll-area';
 export default function LicenciasPage() {
   const { firestore } = initializeFirebase();
   const user = useAuth();
-  const userRole = useUserRole();
   const [isFormOpen, setIsFormOpen] = useState(false);
 
+  // RUTA CENTRALIZADA: Apunta a 'users/default-user/economicLicenses'.
+  // ESTABILIZACIÓN: La consulta se envuelve en useMemo.
   const licensesQuery = useMemo(() => {
-    if (!user) return null;
-    const userId = userRole === 'super_admin' ? 'default-user' : user.uid;
     return query(
-      collection(firestore, `users/${userId}/economicLicenses`),
+      collection(firestore, `users/default-user/economicLicenses`),
       orderBy('createdAt', 'desc')
     );
-  }, [firestore, user, userRole]);
+  }, [firestore]);
 
   const { data: licenses, isLoading } = useCollection<EconomicLicense>(licensesQuery);
 
-  if (!user) return null;
+  // PROTECCIÓN LOGOUT: Evita errores si el usuario no está autenticado.
+  if (!user) {
+    return (
+      <div className="container mx-auto space-y-6 p-4 md:p-8">
+        <Skeleton className="h-10 w-32" />
+        <Skeleton className="h-[500px] w-full" />
+      </div>
+    );
+  }
 
   return (
     <div className="container mx-auto space-y-6 p-4 md:p-8">

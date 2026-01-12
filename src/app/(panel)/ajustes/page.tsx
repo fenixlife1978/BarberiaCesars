@@ -13,14 +13,22 @@ export default function SettingsPage() {
   const user = useAuth();
   const { firestore } = initializeFirebase();
 
+  // ESTABILIZACIÓN: La referencia se envuelve en useMemo.
+  // RUTA CENTRALIZADA: Apunta a 'users/default-user/settings/general'.
   const settingsRef = useMemo(() => {
-    if (!user) return null;
-    // Un super_admin gestiona su propia configuración o la que se le indique.
-    // Por ahora, siempre se usa el UID del usuario logueado.
-    return doc(firestore, `users/${user.uid}/settings/general`);
-  }, [user, firestore]);
+    return doc(firestore, `users/default-user/settings/general`);
+  }, [firestore]);
 
   const { data: settings, isLoading } = useDoc(settingsRef);
+
+  // PROTECCIÓN LOGOUT: Evita errores si el usuario no está autenticado.
+  if (!user) {
+    return (
+        <div className="flex justify-center items-center min-h-[calc(100vh-10rem)]">
+           <Skeleton className="h-64 w-full max-w-2xl" />
+        </div>
+    );
+  }
 
   return (
     <div className="flex flex-col items-center gap-6">

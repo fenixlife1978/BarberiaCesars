@@ -1,6 +1,6 @@
 'use client';
 
-import { useMemo, useState, useEffect } from 'react';
+import { useMemo, useState } from 'react';
 import { type EconomicLicense, type Settings } from '@/types';
 import {
   Table,
@@ -101,11 +101,10 @@ export default function EconomicLicensesTable({ records = [], isLoading }: Econo
   const user = useAuth();
   const { firestore } = initializeFirebase();
 
-  // PROTECCIÓN: Si no hay usuario, no intentamos crear referencias de documentos
+  // RUTA CENTRALIZADA y ESTABILIZACIÓN
   const settingsRef = useMemo(() => {
-    if (!user) return null;
     return doc(firestore, `users/default-user/settings/general`);
-  }, [user, firestore]);
+  }, [firestore]);
 
   const { data: settings } = useDoc<Settings>(settingsRef);
   const companyName = settings?.companyName || 'Alcaldía Municipal';
@@ -124,9 +123,7 @@ export default function EconomicLicensesTable({ records = [], isLoading }: Econo
   }, [records, filter]);
 
   const handleDelete = async (id: string) => {
-    if (!user) return;
-    
-    // RUTA CENTRALIZADA: Asegurar que borramos del nodo compartido
+    // RUTA CENTRALIZADA
     const licenseRef = doc(firestore, `users/default-user/economicLicenses`, id);
     try {
         deleteDocumentNonBlocking(licenseRef);
@@ -197,7 +194,7 @@ export default function EconomicLicensesTable({ records = [], isLoading }: Econo
     doc.save(`Licencia_${license.licenseNumber}.pdf`);
   };
 
-  // Si el usuario no está autenticado, no renderizamos nada para evitar errores de permisos
+  // PROTECCIÓN LOGOUT
   if (!user) return null;
 
   return (

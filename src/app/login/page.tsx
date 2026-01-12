@@ -11,15 +11,13 @@ import { Skeleton } from '@/components/ui/skeleton';
 function LoginBranding() {
   const { firestore } = initializeFirebase();
   
-  // Usamos una referencia fija a default-user para que el branding
-  // siempre sea visible incluso antes de que alguien inicie sesión.
+  // RUTA CENTRALIZADA: Apunta a 'users/default-user/settings/general' para el branding.
   const settingsRef = useMemo(() => {
     return doc(firestore, `users/default-user/settings/general`);
   }, [firestore]);
 
-  const { data: settings, isLoading, error } = useDoc(settingsRef);
+  const { data: settings, isLoading } = useDoc(settingsRef);
 
-  // Si hay un error de carga, mostramos un nombre genérico
   const logoUrl = settings?.logoUrl;
   const companyName = settings?.companyName || "Alcaldía Municipal";
 
@@ -53,6 +51,7 @@ function LoginBranding() {
       <h1 className="text-center text-3xl md:text-4xl font-bold text-primary tracking-tight">
         {companyName}
       </h1>
+      {/* TEXTO CORREGIDO */}
       <p className="text-muted-foreground text-sm -mt-2">Sistema de gestión de Licencias, impuestos y gastos</p>
     </div>
   );

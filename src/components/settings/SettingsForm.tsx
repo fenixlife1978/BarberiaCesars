@@ -1,6 +1,6 @@
 'use client';
 
-import { useRef, useState, useTransition } from 'react';
+import { useState, useTransition } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { settingsSchema, type Settings, type SettingsFormValues } from '@/types';
@@ -40,6 +40,7 @@ export default function SettingsForm({ initialSettings }: { initialSettings?: Se
     },
   });
 
+  // PROTECCIÓN LOGOUT
   if (!user) return null;
 
   const handleLogoChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -58,6 +59,7 @@ export default function SettingsForm({ initialSettings }: { initialSettings?: Se
     const { firestore } = initializeFirebase();
     startTransition(() => {
       try {
+        // RUTA CENTRALIZADA
         const settingsRef = doc(firestore, 'users', 'default-user', 'settings', 'general');
         setDocumentNonBlocking(settingsRef, {
           companyName: values.companyName || "",

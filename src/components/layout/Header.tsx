@@ -37,11 +37,11 @@ export default function Header() {
   const userRole = useUserRole();
   const { firestore } = initializeFirebase();
 
-  // ESTABILIZACIÓN: useMemo evita que la referencia cambie en cada render
+  // RUTA CENTRALIZADA: Apunta a 'users/default-user/settings/general' para el branding.
+  // ESTABILIZACIÓN: La referencia se envuelve en useMemo.
   const settingsRef = useMemo(() => {
-    if (!user) return null;
-    return doc(firestore, 'users', 'default-user', 'settings', 'general');
-  }, [user, firestore]);
+    return doc(firestore, 'users/default-user/settings/general');
+  }, [firestore]);
 
   const { data: settings } = useDoc(settingsRef);
 
@@ -49,6 +49,7 @@ export default function Header() {
   const companyName = settings?.companyName || 'Barberia Cesars';
   const isAdmin = userRole === 'super_admin';
 
+  // PROTECCIÓN LOGOUT: No renderiza nada si el usuario no está autenticado.
   if (!user) return null;
 
   return (

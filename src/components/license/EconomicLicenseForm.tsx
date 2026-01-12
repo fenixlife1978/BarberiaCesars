@@ -17,7 +17,6 @@ import { Label } from '@/components/ui/label';
 import { useToast } from '@/hooks/use-toast';
 import { UploadCloud, Loader2, PlusCircle, X } from 'lucide-react';
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '../ui/form';
-import { Separator } from '../ui/separator';
 import { processImage } from '@/lib/image-utils';
 import { useAuth } from '@/firebase/provider';
 import { collection, doc, serverTimestamp } from 'firebase/firestore';
@@ -79,6 +78,10 @@ export default function EconomicLicenseForm({ isEditMode = false, initialData, o
     control,
     name: "authorizedActivities",
   });
+  
+  // PROTECCIÓN LOGOUT
+  if (!user) return null;
+
 
   const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = e.target.files;
@@ -106,10 +109,6 @@ export default function EconomicLicenseForm({ isEditMode = false, initialData, o
   };
 
   const onSubmit = (values: EconomicLicenseFormValues) => {
-    if (!user) {
-        toast({variant: 'destructive', title: 'Error', description: 'Debes iniciar sesión.'});
-        return;
-    }
     const { firestore } = initializeFirebase();
 
     startTransition(() => {

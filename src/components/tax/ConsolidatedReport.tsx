@@ -32,15 +32,14 @@ export default function ConsolidatedReport({ taxRecords, operatingExpenses }: Co
   const user = useAuth();
   const { firestore } = initializeFirebase();
 
+  // RUTA CENTRALIZADA y ESTABILIZACIÓN
   const settingsRef = useMemo(() => {
-    if (!user) return null;
-    return doc(firestore, `users/${user.uid}/settings/general`);
-  }, [user, firestore]);
+    return doc(firestore, `users/default-user/settings/general`);
+  }, [firestore]);
 
   const { data: settings } = useDoc<Settings>(settingsRef);
   const companyName = settings?.companyName || 'Mi Empresa';
   const logoUrl = settings?.logoUrl;
-
 
   const availableYears = useMemo(() => {
     const years = new Set([
@@ -124,8 +123,6 @@ export default function ConsolidatedReport({ taxRecords, operatingExpenses }: Co
         const img = new Image();
         img.crossOrigin = "Anonymous";
         img.src = logoUrl;
-        // This is a hacky way to make sure the image is loaded before adding it to the PDF.
-        // A better solution would involve handling image loading async.
         doc.addImage(logoUrl, 'PNG', 14, 12, 20, 20);
       } catch (e) {
         console.error("Error loading logo for PDF", e);
@@ -179,6 +176,9 @@ export default function ConsolidatedReport({ taxRecords, operatingExpenses }: Co
 
     doc.save(`reporte_consolidado_${selectedYear}.pdf`);
   };
+
+  // PROTECCIÓN LOGOUT
+  if (!user) return null;
 
 
   return (

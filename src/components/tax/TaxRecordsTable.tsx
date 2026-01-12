@@ -27,7 +27,6 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog"
-// Cambiamos el nombre de la importación para evitar el error 'new Image()'
 import NextImage from 'next/image'; 
 import { Badge } from '../ui/badge';
 import { ScrollArea } from '../ui/scroll-area';
@@ -41,7 +40,6 @@ import { doc } from 'firebase/firestore';
 import { useDoc } from '@/firebase/firestore/use-doc';
 import { deleteDocumentNonBlocking } from '@/firebase/non-blocking-updates';
 
-// Cambiamos 'initialRecords' por 'records' para que coincida con la página
 type TaxRecordsTableProps = {
   records: TaxRecord[];
   isLoading?: boolean;
@@ -69,7 +67,6 @@ function DocumentPreviewDialog({ src }: { src: string }) {
         <Dialog open={open} onOpenChange={setOpen}>
             <DialogTrigger asChild>
                 <button className="relative w-full h-full">
-                    {/* Usamos NextImage aquí */}
                     <NextImage src={src} alt="Comprobante" width={200} height={200} className="object-contain rounded-md border w-full h-full" />
                 </button>
             </DialogTrigger>
@@ -97,10 +94,10 @@ export default function TaxRecordsTable({ records = [], isLoading = false }: Tax
   const user = useAuth();
   const { firestore } = initializeFirebase();
 
+  // RUTA CENTRALIZADA y ESTABILIZACIÓN
   const settingsRef = useMemo(() => {
-    if (!user) return null;
-    return doc(firestore, `users/${user.uid}/settings/general`);
-  }, [user, firestore]);
+    return doc(firestore, `users/default-user/settings/general`);
+  }, [firestore]);
 
   const { data: settings } = useDoc<Settings>(settingsRef);
   const companyName = settings?.companyName || 'Mi Empresa';
@@ -121,8 +118,8 @@ export default function TaxRecordsTable({ records = [], isLoading = false }: Tax
   }, [records, dateFilter, descriptionFilter]);
   
   const handleDelete = async (id: string) => {
-    if (!user) return;
-    const recordRef = doc(firestore, `users/${user.uid}/taxRecords`, id);
+    // RUTA CENTRALIZADA
+    const recordRef = doc(firestore, `users/default-user/taxRecords`, id);
 
     try {
         deleteDocumentNonBlocking(recordRef);
@@ -158,7 +155,6 @@ export default function TaxRecordsTable({ records = [], isLoading = false }: Tax
     
     if (logoUrl) {
       try {
-        // CORRECCIÓN: Usamos el objeto global 'Image' para evitar conflicto con Next.js
         const img = new (window.Image)();
         img.crossOrigin = "Anonymous";
         doc.addImage(logoUrl, 'PNG', 14, 12, 20, 20);
@@ -199,6 +195,9 @@ export default function TaxRecordsTable({ records = [], isLoading = false }: Tax
     
     doc.save(`pago_impuesto_${record.receiptNumber}.pdf`);
   };
+  
+  // PROTECCIÓN LOGOUT
+  if (!user) return null;
 
   return (
     <div className="space-y-4">
