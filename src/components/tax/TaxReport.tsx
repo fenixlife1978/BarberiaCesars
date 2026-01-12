@@ -23,7 +23,7 @@ import { cn } from '@/lib/utils';
 import { months } from '@/types';
 import { jsPDF } from 'jspdf';
 import 'jspdf-autotable';
-import { useAuth, useUserRole } from '@/firebase/provider';
+import { useAuth } from '@/firebase/provider';
 import { useDoc } from '@/firebase/firestore/use-doc';
 import { doc } from 'firebase/firestore';
 import { initializeFirebase } from '@/firebase';
@@ -43,18 +43,12 @@ export default function TaxReport({ records }: TaxReportProps) {
   const [dateRange, setDateRange] = useState<DateRange | undefined>();
   const [selectedYear, setSelectedYear] = useState<string>('all');
   const user = useAuth();
-  const userRole = useUserRole();
   const { firestore } = initializeFirebase();
   
-  const userIdToQuery = useMemo(() => {
-    if (!user) return null;
-    return userRole === 'super_admin' ? 'default-user' : user.uid;
-  }, [user, userRole]);
-
   const settingsRef = useMemo(() => {
-    if (!userIdToQuery) return null;
-    return doc(firestore, `users/${userIdToQuery}/settings/general`);
-  }, [userIdToQuery, firestore]);
+    if (!user) return null;
+    return doc(firestore, `users/${user.uid}/settings/general`);
+  }, [user, firestore]);
 
   const { data: settings } = useDoc<Settings>(settingsRef);
   const companyName = settings?.companyName || 'Mi Empresa';

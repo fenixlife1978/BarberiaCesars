@@ -38,20 +38,6 @@ export interface InternalQuery extends Query<DocumentData> {
 }
 
 /**
- * Custom hook to create a stable query reference.
- * 
- * @param createQuery - A function that returns a Firestore query or collection reference.
- * @param deps - An array of dependencies for the useMemo hook.
- * @returns A memoized query reference.
- */
-export function useMemoizedQuery(createQuery: () => Query<DocumentData> | CollectionReference<DocumentData> | null, deps: React.DependencyList) {
-  const query = useMemo(() => {
-    return createQuery();
-  }, deps);
-  return query;
-}
-
-/**
  * React hook to subscribe to a Firestore collection or query in real-time.
  * Handles nullable references/queries.
  * 

@@ -3,7 +3,7 @@ import { useMemo } from 'react';
 import { doc } from 'firebase/firestore';
 import { useDoc } from '@/firebase/firestore/use-doc';
 import { initializeFirebase } from '@/firebase';
-import { useAuth, useUserRole } from '@/firebase/provider';
+import { useAuth } from '@/firebase/provider';
 import SettingsForm from "@/components/settings/SettingsForm";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import BackButton from "@/components/BackButton";
@@ -11,18 +11,14 @@ import { Skeleton } from '@/components/ui/skeleton';
 
 export default function SettingsPage() {
   const user = useAuth();
-  const userRole = useUserRole();
   const { firestore } = initializeFirebase();
 
-  const userIdToQuery = useMemo(() => {
-    if (!user) return null;
-    return userRole === 'super_admin' ? 'default-user' : user.uid;
-  }, [user, userRole]);
-
   const settingsRef = useMemo(() => {
-    if (!userIdToQuery) return null;
-    return doc(firestore, `users/${userIdToQuery}/settings/general`);
-  }, [userIdToQuery, firestore]);
+    if (!user) return null;
+    // Un super_admin gestiona su propia configuración o la que se le indique.
+    // Por ahora, siempre se usa el UID del usuario logueado.
+    return doc(firestore, `users/${user.uid}/settings/general`);
+  }, [user, firestore]);
 
   const { data: settings, isLoading } = useDoc(settingsRef);
 

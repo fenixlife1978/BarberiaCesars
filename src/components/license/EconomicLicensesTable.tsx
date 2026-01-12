@@ -36,7 +36,7 @@ import {
 import { ScrollArea } from '../ui/scroll-area';
 import Image from 'next/image';
 import { useToast } from '@/hooks/use-toast';
-import { useAuth, useUserRole } from '@/firebase/provider';
+import { useAuth } from '@/firebase/provider';
 import { initializeFirebase } from '@/firebase';
 import { doc, deleteDoc } from 'firebase/firestore';
 import { jsPDF } from 'jspdf';
@@ -97,18 +97,12 @@ export default function EconomicLicensesTable({ initialLicenses, isLoading }: Ec
   const [editingLicense, setEditingLicense] = useState<EconomicLicense | null>(null);
   const { toast } = useToast();
   const user = useAuth();
-  const userRole = useUserRole();
   const { firestore } = initializeFirebase();
 
-  const userIdToUse = useMemo(() => {
-    if (!user) return null;
-    return userRole === 'super_admin' ? 'default-user' : user.uid;
-  }, [user, userRole]);
-
   const settingsRef = useMemo(() => {
-    if (!userIdToUse) return null;
-    return doc(firestore, `users/${userIdToUse}/settings/general`);
-  }, [userIdToUse, firestore]);
+    if (!user) return null;
+    return doc(firestore, `users/${user.uid}/settings/general`);
+  }, [user, firestore]);
 
   const { data: settings } = useDoc<Settings>(settingsRef);
   const companyName = settings?.companyName || 'Mi Empresa';
@@ -126,9 +120,9 @@ export default function EconomicLicensesTable({ initialLicenses, isLoading }: Ec
   }, [initialLicenses, filter]);
 
   const handleDelete = async (id: string) => {
-    if (!userIdToUse) return;
+    if (!user) return;
     
-    const licenseRef = doc(firestore, `users/${userIdToUse}/economicLicenses`, id);
+    const licenseRef = doc(firestore, `users/${user.uid}/economicLicenses`, id);
     try {
         deleteDocumentNonBlocking(licenseRef);
         toast({

@@ -36,7 +36,7 @@ import {
 import { ScrollArea } from '../ui/scroll-area';
 import Image from 'next/image';
 import { useToast } from '@/hooks/use-toast';
-import { useAuth, useUserRole } from '@/firebase/provider';
+import { useAuth } from '@/firebase/provider';
 import { initializeFirebase } from '@/firebase';
 import { doc, deleteDoc } from 'firebase/firestore';
 import OperatingExpenseForm from './OperatingExpenseForm';
@@ -89,12 +89,6 @@ export default function OperatingExpensesTable({ initialExpenses, isLoading }: O
   const [editingExpense, setEditingExpense] = useState<OperatingExpense | null>(null);
   const { toast } = useToast();
   const user = useAuth();
-  const userRole = useUserRole();
-
-  const userIdToUse = useMemo(() => {
-    if (!user) return null;
-    return userRole === 'super_admin' ? 'default-user' : user.uid;
-  }, [user, userRole]);
 
   const filteredExpenses = useMemo(() => {
     return (initialExpenses || []).filter((expense) => {
@@ -108,9 +102,9 @@ export default function OperatingExpensesTable({ initialExpenses, isLoading }: O
   }, [initialExpenses, filter]);
 
   const handleDelete = async (id: string) => {
-    if (!userIdToUse) return;
+    if (!user) return;
     const { firestore } = initializeFirebase();
-    const expenseRef = doc(firestore, `users/${userIdToUse}/operatingExpenses`, id);
+    const expenseRef = doc(firestore, `users/${user.uid}/operatingExpenses`, id);
     try {
         deleteDocumentNonBlocking(expenseRef);
         toast({

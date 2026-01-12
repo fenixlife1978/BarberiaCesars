@@ -14,7 +14,7 @@ import { useToast } from '@/hooks/use-toast';
 import { UploadCloud, Loader2, X } from 'lucide-react';
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '../ui/form';
 import { processImage } from '@/lib/image-utils';
-import { useAuth, useUserRole } from '@/firebase/provider';
+import { useAuth } from '@/firebase/provider';
 import { addDoc, collection, doc, serverTimestamp, updateDoc } from 'firebase/firestore';
 import { initializeFirebase } from '@/firebase';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../ui/select';
@@ -42,13 +42,7 @@ export default function OperatingExpenseForm({ isEditMode = false, initialData, 
   const formRef = useRef<HTMLFormElement>(null);
   const [previews, setPreviews] = useState<string[]>(initialData?.documents || []);
   const user = useAuth();
-  const userRole = useUserRole();
   const [showCustomDescription, setShowCustomDescription] = useState(false);
-
-  const userIdToUse = useMemo(() => {
-    if (!user) return null;
-    return userRole === 'super_admin' ? 'default-user' : user.uid;
-  }, [user, userRole]);
 
   const form = useForm<OperatingExpenseFormValues>({
     resolver: zodResolver(isEditMode ? operatingExpenseWithIdSchema : operatingExpenseSchema),
@@ -127,7 +121,7 @@ export default function OperatingExpenseForm({ isEditMode = false, initialData, 
   };
 
   const onSubmit = (values: OperatingExpenseFormValues) => {
-    if (!userIdToUse) {
+    if (!user) {
         toast({variant: 'destructive', title: 'Error', description: 'Debes iniciar sesión.'});
         return;
     }
@@ -136,15 +130,15 @@ export default function OperatingExpenseForm({ isEditMode = false, initialData, 
     startTransition(() => {
         try {
             if (isEditMode && initialData?.id) {
-                const expenseRef = doc(firestore, `users/${userIdToUse}/operatingExpenses`, initialData.id);
+                const expenseRef = doc(firestore, `users/${user.uid}/operatingExpenses`, initialData.id);
                 updateDocumentNonBlocking(expenseRef, { ...values });
                 toast({title: 'Éxito', description: 'Gasto actualizado con éxito.'});
             } else {
-                const expensesCollection = collection(firestore, `users/${userIdToUse}/operatingExpenses`);
+                const expensesCollection = collection(firestore, `users/${user.uid}/operatingExpenses`);
                 addDocumentNonBlocking(expensesCollection, {
                     ...values,
                     createdAt: serverTimestamp(),
-                    userId: userIdToUse,
+                    userId: user.uid,
                 });
                 toast({title: 'Éxito', description: 'Gasto agregado con éxito.'});
                 reset({

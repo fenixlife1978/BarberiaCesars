@@ -21,7 +21,7 @@ import { UploadCloud, Loader2, ChevronLeft, ChevronRight, X } from 'lucide-react
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '../ui/form';
 import { processImage } from '@/lib/image-utils';
 import { Checkbox } from '../ui/checkbox';
-import { useAuth, useUserRole } from '@/firebase/provider';
+import { useAuth } from '@/firebase/provider';
 import { initializeFirebase } from '@/firebase';
 import { addDocumentNonBlocking, updateDocumentNonBlocking } from '@/firebase/non-blocking-updates';
 
@@ -46,12 +46,6 @@ export default function TaxForm({ isEditMode = false, initialData, onSuccess }: 
   const formRef = useRef<HTMLFormElement>(null);
   const [previews, setPreviews] = useState<string[]>(initialData?.documents || []);
   const user = useAuth();
-  const userRole = useUserRole();
-
-  const userIdToUse = useMemo(() => {
-    if (!user) return null;
-    return userRole === 'super_admin' ? 'default-user' : user.uid;
-  }, [user, userRole]);
 
   const currentYear = new Date().getFullYear();
   const [selectedYear, setSelectedYear] = useState(
@@ -117,7 +111,7 @@ export default function TaxForm({ isEditMode = false, initialData, onSuccess }: 
   };
   
   const onSubmit = (values: TaxRecordFormValues) => {
-    if (!userIdToUse) {
+    if (!user) {
         toast({variant: 'destructive', title: 'Error', description: 'Debes iniciar sesión.'});
         return;
     }
@@ -131,15 +125,15 @@ export default function TaxForm({ isEditMode = false, initialData, onSuccess }: 
     startTransition(() => {
         try {
             if (isEditMode && initialData?.id) {
-                 const recordRef = doc(firestore, `users/${userIdToUse}/taxRecords`, initialData.id);
+                 const recordRef = doc(firestore, `users/${user.uid}/taxRecords`, initialData.id);
                  updateDocumentNonBlocking(recordRef, dataToSave);
                  toast({title: 'Éxito', description: 'Registro actualizado con éxito.'});
             } else {
-                const recordsCollection = collection(firestore, `users/${userIdToUse}/taxRecords`);
+                const recordsCollection = collection(firestore, `users/${user.uid}/taxRecords`);
                 addDocumentNonBlocking(recordsCollection, {
                     ...dataToSave,
                     createdAt: serverTimestamp(),
-                    userId: userIdToUse,
+                    userId: user.uid,
                 });
                 toast({title: 'Éxito', description: 'Registro agregado con éxito.'});
                 reset({

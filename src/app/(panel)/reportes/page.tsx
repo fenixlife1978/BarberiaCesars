@@ -3,7 +3,7 @@ import { useMemo } from 'react';
 import { collection, query, orderBy } from 'firebase/firestore';
 import { useCollection } from '@/firebase/firestore/use-collection';
 import { initializeFirebase } from '@/firebase';
-import { useAuth, useUserRole } from '@/firebase/provider';
+import { useAuth } from '@/firebase/provider';
 import TaxReport from "@/components/tax/TaxReport";
 import ConsolidatedReport from "@/components/tax/ConsolidatedReport";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -14,19 +14,13 @@ import { OperatingExpense, TaxRecord } from '@/types';
 
 export default function ReportesPage() {
   const user = useAuth();
-  const userRole = useUserRole();
   const { firestore } = initializeFirebase();
-
-  const userIdToQuery = useMemo(() => {
-    if (!user) return null;
-    return userRole === 'super_admin' ? 'default-user' : user.uid;
-  }, [user, userRole]);
 
   // Fetch Tax Records
   const taxRecordsRef = useMemo(() => {
-    if (!userIdToQuery) return null;
-    return collection(firestore, `users/${userIdToQuery}/taxRecords`);
-  }, [userIdToQuery, firestore]);
+    if (!user) return null;
+    return collection(firestore, `users/${user.uid}/taxRecords`);
+  }, [user, firestore]);
   const taxRecordsQuery = useMemo(() => {
     if (!taxRecordsRef) return null;
     return query(taxRecordsRef, orderBy('paymentDate', 'desc'));
@@ -35,9 +29,9 @@ export default function ReportesPage() {
 
   // Fetch Operating Expenses
   const expensesRef = useMemo(() => {
-    if (!userIdToQuery) return null;
-    return collection(firestore, `users/${userIdToQuery}/operatingExpenses`);
-  }, [userIdToQuery, firestore]);
+    if (!user) return null;
+    return collection(firestore, `users/${user.uid}/operatingExpenses`);
+  }, [user, firestore]);
   const expensesQuery = useMemo(() => {
     if (!expensesRef) return null;
     return query(expensesRef, orderBy('date', 'desc'));

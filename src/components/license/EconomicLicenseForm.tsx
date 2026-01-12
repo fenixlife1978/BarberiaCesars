@@ -15,7 +15,7 @@ import { UploadCloud, Loader2, PlusCircle, X } from 'lucide-react';
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '../ui/form';
 import { Separator } from '../ui/separator';
 import { processImage } from '@/lib/image-utils';
-import { useAuth, useUserRole } from '@/firebase/provider';
+import { useAuth } from '@/firebase/provider';
 import { addDoc, collection, doc, serverTimestamp, updateDoc } from 'firebase/firestore';
 import { initializeFirebase } from '@/firebase';
 import { addDocumentNonBlocking, updateDocumentNonBlocking } from '@/firebase/non-blocking-updates';
@@ -42,12 +42,6 @@ export default function EconomicLicenseForm({ isEditMode = false, initialData, o
   const formRef = useRef<HTMLFormElement>(null);
   const [previews, setPreviews] = useState<string[]>(initialData?.documents || []);
   const user = useAuth();
-  const userRole = useUserRole();
-
-  const userIdToUse = useMemo(() => {
-    if (!user) return null;
-    return userRole === 'super_admin' ? 'default-user' : user.uid;
-  }, [user, userRole]);
 
   const form = useForm<EconomicLicenseFormValues>({
     resolver: zodResolver(isEditMode ? economicLicenseWithIdSchema : economicLicenseSchema),
@@ -126,7 +120,7 @@ export default function EconomicLicenseForm({ isEditMode = false, initialData, o
   };
 
   const onSubmit = (values: EconomicLicenseFormValues) => {
-    if (!userIdToUse) {
+    if (!user) {
         toast({variant: 'destructive', title: 'Error', description: 'Debes iniciar sesión.'});
         return;
     }
@@ -135,15 +129,15 @@ export default function EconomicLicenseForm({ isEditMode = false, initialData, o
     startTransition(() => {
         try {
             if (isEditMode && initialData?.id) {
-                const licenseRef = doc(firestore, `users/${userIdToUse}/economicLicenses`, initialData.id);
+                const licenseRef = doc(firestore, `users/${user.uid}/economicLicenses`, initialData.id);
                 updateDocumentNonBlocking(licenseRef, values);
                 toast({title: 'Éxito', description: 'Licencia económica actualizada con éxito.'});
             } else {
-                const licensesCollection = collection(firestore, `users/${userIdToUse}/economicLicenses`);
+                const licensesCollection = collection(firestore, `users/${user.uid}/economicLicenses`);
                 addDocumentNonBlocking(licensesCollection, {
                     ...values,
                     createdAt: serverTimestamp(),
-                    userId: userIdToUse,
+                    userId: user.uid,
                 });
                 toast({title: 'Éxito', description: 'Licencia económica agregada con éxito.'});
                 reset();

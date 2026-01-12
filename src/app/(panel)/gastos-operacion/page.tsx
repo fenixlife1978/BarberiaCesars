@@ -3,25 +3,19 @@ import { useMemo } from 'react';
 import { collection, query, orderBy } from 'firebase/firestore';
 import { useCollection } from '@/firebase/firestore/use-collection';
 import { initializeFirebase } from '@/firebase';
-import { useAuth, useUserRole } from '@/firebase/provider';
+import { useAuth } from '@/firebase/provider';
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import OperatingExpenseForm from "@/components/expense/OperatingExpenseForm";
 import OperatingExpensesTable from "@/components/expense/OperatingExpensesTable";
 
 export default function OperatingExpensesPage() {
   const user = useAuth();
-  const userRole = useUserRole();
   const { firestore } = initializeFirebase();
 
-  const userIdToQuery = useMemo(() => {
-    if (!user) return null;
-    return userRole === 'super_admin' ? 'default-user' : user.uid;
-  }, [user, userRole]);
-
   const expensesRef = useMemo(() => {
-    if (!userIdToQuery) return null;
-    return collection(firestore, `users/${userIdToQuery}/operatingExpenses`);
-  }, [userIdToQuery, firestore]);
+    if (!user) return null;
+    return collection(firestore, `users/${user.uid}/operatingExpenses`);
+  }, [user, firestore]);
   
   const expensesQuery = useMemo(() => {
     if (!expensesRef) return null;

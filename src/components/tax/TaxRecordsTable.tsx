@@ -34,7 +34,7 @@ import TaxForm from './TaxForm';
 import { useToast } from '@/hooks/use-toast';
 import { jsPDF } from "jspdf";
 import 'jspdf-autotable';
-import { useAuth, useUserRole } from '@/firebase/provider';
+import { useAuth } from '@/firebase/provider';
 import { initializeFirebase } from '@/firebase';
 import { doc, deleteDoc } from 'firebase/firestore';
 import { useDoc } from '@/firebase/firestore/use-doc';
@@ -93,18 +93,12 @@ export default function TaxRecordsTable({ initialRecords, isLoading }: TaxRecord
   const [editingRecord, setEditingRecord] = useState<TaxRecord | null>(null);
   const { toast } = useToast();
   const user = useAuth();
-  const userRole = useUserRole();
   const { firestore } = initializeFirebase();
 
-  const userIdToUse = useMemo(() => {
-    if (!user) return null;
-    return userRole === 'super_admin' ? 'default-user' : user.uid;
-  }, [user, userRole]);
-
   const settingsRef = useMemo(() => {
-    if (!userIdToUse) return null;
-    return doc(firestore, `users/${userIdToUse}/settings/general`);
-  }, [userIdToUse, firestore]);
+    if (!user) return null;
+    return doc(firestore, `users/${user.uid}/settings/general`);
+  }, [user, firestore]);
 
   const { data: settings } = useDoc<Settings>(settingsRef);
   const companyName = settings?.companyName || 'Mi Empresa';
@@ -125,9 +119,9 @@ export default function TaxRecordsTable({ initialRecords, isLoading }: TaxRecord
   }, [initialRecords, dateFilter, descriptionFilter]);
   
   const handleDelete = async (id: string) => {
-    if (!userIdToUse) return;
+    if (!user) return;
     
-    const recordRef = doc(firestore, `users/${userIdToUse}/taxRecords`, id);
+    const recordRef = doc(firestore, `users/${user.uid}/taxRecords`, id);
 
     try {
         deleteDocumentNonBlocking(recordRef);

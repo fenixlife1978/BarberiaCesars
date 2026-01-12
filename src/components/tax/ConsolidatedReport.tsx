@@ -9,7 +9,7 @@ import { Button } from '../ui/button';
 import { FileDown } from 'lucide-react';
 import jsPDF from 'jspdf';
 import 'jspdf-autotable';
-import { useAuth, useUserRole } from '@/firebase/provider';
+import { useAuth } from '@/firebase/provider';
 import { useDoc } from '@/firebase/firestore/use-doc';
 import { doc } from 'firebase/firestore';
 import { initializeFirebase } from '@/firebase';
@@ -30,18 +30,12 @@ const allCategories: ("Impuestos" | (typeof expenseCategories)[number])[] = ["Im
 export default function ConsolidatedReport({ taxRecords, operatingExpenses }: ConsolidatedReportProps) {
   const [selectedYear, setSelectedYear] = useState<string>(() => new Date().getFullYear().toString());
   const user = useAuth();
-  const userRole = useUserRole();
   const { firestore } = initializeFirebase();
 
-  const userIdToQuery = useMemo(() => {
-    if (!user) return null;
-    return userRole === 'super_admin' ? 'default-user' : user.uid;
-  }, [user, userRole]);
-
   const settingsRef = useMemo(() => {
-    if (!userIdToQuery) return null;
-    return doc(firestore, `users/${userIdToQuery}/settings/general`);
-  }, [userIdToQuery, firestore]);
+    if (!user) return null;
+    return doc(firestore, `users/${user.uid}/settings/general`);
+  }, [user, firestore]);
 
   const { data: settings } = useDoc<Settings>(settingsRef);
   const companyName = settings?.companyName || 'Mi Empresa';

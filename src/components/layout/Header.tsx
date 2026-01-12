@@ -33,15 +33,12 @@ export default function Header() {
   const userRole = useUserRole();
   const { firestore } = initializeFirebase();
 
-  const userIdToQuery = useMemo(() => {
-    if (!user) return null;
-    return userRole === 'super_admin' ? 'default-user' : user.uid;
-  }, [user, userRole]);
-  
   const settingsRef = useMemo(() => {
-    if (!userIdToQuery) return null;
-    return doc(firestore, `users/${userIdToQuery}/settings/general`);
-  }, [userIdToQuery, firestore]);
+    // Para el logo y nombre, un super_admin podría ver uno por defecto, o el suyo.
+    // Por ahora, usamos el del usuario logueado.
+    if (!user) return doc(firestore, `users/default-user/settings/general`);
+    return doc(firestore, `users/${user.uid}/settings/general`);
+  }, [user, firestore]);
 
   const { data: settings } = useDoc(settingsRef);
 
