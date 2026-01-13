@@ -18,8 +18,13 @@ function LogoutButton() {
   const handleLogout = async () => {
     const { auth } = initializeFirebase();
     try {
-      await signOut(auth);
+      // 1. Redirigimos PRIMERO para que los componentes protegidos se desmonten
       router.push('/login');
+      
+      // 2. Pequeña pausa para asegurar que el router inicie la transición antes de invalidar el token
+      setTimeout(async () => {
+        await signOut(auth);
+      }, 100);
     } catch (error) {
       console.error("Error al cerrar sesión:", error);
     }
@@ -37,19 +42,22 @@ export default function Header() {
   const userRole = useUserRole();
   const { firestore } = initializeFirebase();
 
-  // RUTA CENTRALIZADA: Apunta a 'users/default-user/settings/general' para el branding.
-  // ESTABILIZACIÓN: La referencia se envuelve en useMemo.
+  // RUTA CENTRALIZADA Y ESTABILIZADA:
+  // Usamos user?.uid como dependencia para que, en cuanto el usuario sea null,
+  // la referencia sea null y el hook useDoc deje de escuchar a Firebase inmediatamente.
   const settingsRef = useMemo(() => {
-    return doc(firestore, 'users/default-user/settings/general');
-  }, [firestore]);
+    if (!user?.uid) return null;
+    return doc(firestore, 'users', 'default-user', 'settings', 'general');
+  }, [user?.uid, firestore]);
 
   const { data: settings } = useDoc(settingsRef);
 
   const logoUrl = settings?.logoUrl || '/logo-512.png';
-  const companyName = settings?.companyName || 'Barberia Cesars';
+  const companyName = settings?.companyName || "Barbería Cesar's";
   const isAdmin = userRole === 'super_admin';
 
-  // PROTECCIÓN LOGOUT: No renderiza nada si el usuario no está autenticado.
+  // PROTECCIÓN LOGOUT: Si no hay usuario, no renderizamos nada.
+  // Esto evita que al cerrar sesión el componente intente un render final con datos de Firebase.
   if (!user) return null;
 
   return (
@@ -102,7 +110,7 @@ export default function Header() {
                 {isAdmin && (
                   <>
                     <div className="my-2 border-t" />
-                    <Button variant="ghost" className="justify-start bg-white/10" asChild>
+                    <Button variant="ghost" className="justify-start bg-slate-100" asChild>
                       <Link href="/admin"><ShieldCheck className="mr-2 h-4 w-4" />Admin</Link>
                     </Button>
                   </>

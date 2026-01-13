@@ -15,10 +15,12 @@ export function useDoc<T = any>(docRef: DocumentReference | null) {
   const [error, setError] = useState<FirestoreError | null>(null);
 
   useEffect(() => {
-    // 1. Si no hay referencia (ej. usuario cerrando sesión), limpiamos y salimos
+    // 1. Si no hay referencia (ej. usuario cerrando sesión o ruta no definida), 
+    // limpiamos el estado y detenemos cualquier ejecución.
     if (!docRef) {
       setData(null);
       setIsLoading(false);
+      setError(null);
       return;
     }
 
@@ -29,7 +31,7 @@ export function useDoc<T = any>(docRef: DocumentReference | null) {
       docRef,
       (snapshot: DocumentSnapshot<DocumentData>) => {
         if (snapshot.exists()) {
-          // Solo actualizamos el estado con los datos + ID
+        
           setData({ id: snapshot.id, ...snapshot.data() } as T);
         } else {
           setData(null);
@@ -37,18 +39,25 @@ export function useDoc<T = any>(docRef: DocumentReference | null) {
         setIsLoading(false);
         setError(null);
       },
-      (err) => {
-        console.error("Error en useDoc:", err);
+      (err: FirestoreError) => {
+        // FILTRO DE SEGURIDAD: 
+        // Si el error es 'permission-denied', lo silenciamos en la consola.
+        // Esto ocurre normalmente cuando el estado de auth cambia a null 
+        // pero el listener sigue activo un milisegundo más.
+        if (err.code !== 'permission-denied') {
+          console.error("Error en useDoc:", err);
+        }
+        
         setError(err);
         setIsLoading(false);
       }
     );
 
-    // 3. Limpieza de la suscripción al desmontar o cambiar la referencia
+    // 3. Limpieza de la suscripción al desmontar el componente o cambiar la referencia
     return () => unsubscribe();
     
-    // IMPORTANTE: Usamos el path del documento como dependencia para evitar 
-    // que referencias de objetos recreados disparen el bucle.
+    // Usamos docRef?.path para asegurar que el efecto solo se reinicie 
+    // si la ruta del documento cambia realmente, evitando bucles infinitos.
   }, [docRef?.path]); 
 
   return { data, isLoading, error };
